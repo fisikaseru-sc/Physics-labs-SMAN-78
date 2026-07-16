@@ -256,7 +256,7 @@ function drawTruckObj(x, y, angle) {
     ctx.restore();
 }
 
-// --- MATTER.JS SCENARIO BUILDERS ---
+    // --- MATTER.JS SCENARIO BUILDERS ---
 function buildScenario() {
     World.clear(world);
     Engine.clear(engine);
@@ -264,8 +264,9 @@ function buildScenario() {
     const groundY = logicalHeight - 50;
     engine.gravity.y = 1; // Default for side-view scenarios
     
-    // Add ground and walls
-    const ground = Bodies.rectangle(logicalWidth/2, groundY + 25, logicalWidth*3, 50, { isStatic: true });
+    // Add ground with 0 friction for braking scenario (so car rolls constantly)
+    const groundFriction = currentScenario === 'braking' ? 0 : 0.1;
+    const ground = Bodies.rectangle(logicalWidth/2, groundY + 25, logicalWidth*3, 50, { isStatic: true, friction: groundFriction });
     World.add(world, ground);
 
     if (currentScenario === 'trolley') {
@@ -289,8 +290,8 @@ function buildScenario() {
     }
     else if (currentScenario === 'braking') {
         engine.gravity.scale = 0.001; // default
-        // Set frictionAir to 0 so the car and box move at 100% constant speed before braking
-        activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.01, frictionAir: 0 });
+        // Restore car friction to 0.1 so box has friction with the car top, but ground has 0 friction
+        activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.1, frictionAir: 0 });
         activeBodies.box = Bodies.rectangle(logicalWidth/2 - 150, groundY - 75, 40, 30, { mass: 50, friction: 0.3, frictionAir: 0 });
         
         let startSpeed = parseFloat(carSpeed.value) || 15;
