@@ -413,13 +413,6 @@ function drawScene() {
             }
         }
     }
-
-    if (isPlaying || mouseConstraint.mouse.button !== -1) {
-        requestAnimationFrame(simulationLoop);
-    } else {
-        // Just draw once if paused
-        requestAnimationFrame(() => {}); 
-    }
 }
 
 function simulationLoop(timestamp) {
