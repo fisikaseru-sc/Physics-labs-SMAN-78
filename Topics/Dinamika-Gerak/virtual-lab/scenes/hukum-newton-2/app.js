@@ -295,7 +295,10 @@ function buildScenario() {
         activeBodies.box = Bodies.rectangle(logicalWidth/2 - 150, groundY - 75, 40, 30, { mass: 50, friction: 0.3, frictionAir: 0 });
         
         let startSpeed = parseFloat(carSpeed.value) || 15;
-        // Need to scale speed to Matter.js units (~0.1 of actual meter/s)
+        if (startSpeed > 40) { startSpeed = 40; carSpeed.value = 40; }
+        else if (startSpeed < 5) { startSpeed = 5; carSpeed.value = 5; }
+        
+        // Need to scale speed to Matter.js units (~0.5 of actual meter/s)
         Body.setVelocity(activeBodies.car, { x: startSpeed * 0.5, y: 0 });
         Body.setVelocity(activeBodies.box, { x: startSpeed * 0.5, y: 0 });
         
@@ -469,6 +472,8 @@ function updatePhysics(dt) {
         if (activeBodies.rocketLaunchTime > 3 && thrust <= weight) {
             checkStop(activeBodies.rocket, true, "💥 Simulasi Selesai: Roket gagal meluncur (Gaya Dorong < Berat)");
         }
+    } else if (currentScenario === 'braking') {
+        checkStop(activeBodies.car, activeBodies.car.position.x > 3000, "🏁 Mobil melaju terlalu jauh! Ulangi simulasi dan tekan tombol REM MENDADAK!");
     }
     
     // --- CAMERA TARGET UPDATE ---
