@@ -539,7 +539,7 @@ btnBrake.addEventListener('click', () => {
     if(!isPlaying) btnPlayPause.click();
 });
 
-[trolleyMassSelect, trolleyForce, rocketThrust, carSpeed, raceForce, tugLeftForce, tugRightForce].forEach(el => {
+[trolleyMassSelect, trolleyForce, rocketThrust, carSpeed, raceForce].forEach(el => {
     el.addEventListener('input', () => { if (!isPlaying) resetSim(); });
 });
 
