@@ -280,14 +280,29 @@ function drawScene() {
     const centerY = canvas.height / 2 + 80;
     
     let isCar = (scenarioSelect.value === 'konstan' || (scenarioSelect.value === 'custom' && customObject.value === 'car'));
+    let isTug = (scenarioSelect.value === 'tariktambang');
 
-    // Draw Floor with some perspective/road marks if car
-    ctx.beginPath();
-    ctx.moveTo(0, centerY);
-    ctx.lineTo(canvas.width, centerY);
-    ctx.lineWidth = 10;
-    ctx.strokeStyle = '#475569';
-    ctx.stroke();
+    if (isCar || isTug) {
+        let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        skyGradient.addColorStop(0, '#bae6fd'); skyGradient.addColorStop(1, '#f0f9ff');
+        ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#4ade80'; ctx.fillRect(0, centerY, canvas.width, canvas.height - centerY);
+    } else {
+        ctx.fillStyle = '#fef3c7'; ctx.fillRect(0, 0, canvas.width, centerY);
+        ctx.fillStyle = '#d97706'; ctx.fillRect(0, centerY - 15, canvas.width, 15);
+        ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, centerY, canvas.width, canvas.height - centerY);
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2;
+        for(let i = 0; i < canvas.width; i+=100) {
+            ctx.beginPath(); ctx.moveTo(i, centerY); ctx.lineTo(i - 20, canvas.height); ctx.stroke();
+        }
+    }
+
+    if (isCar) {
+        ctx.fillStyle = '#94a3b8'; ctx.fillRect(0, centerY, canvas.width, 15);
+    } else {
+        ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY);
+        ctx.lineWidth = 4; ctx.strokeStyle = '#94a3b8'; ctx.stroke();
+    }
     
     if (isCar) {
         // Efek jalan bergerak (kamera mengikuti mobil)
