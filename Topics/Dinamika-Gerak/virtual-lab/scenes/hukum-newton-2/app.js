@@ -64,6 +64,19 @@ let logicalWidth = 800;
 let logicalHeight = 600;
 let cameraX = 0;
 let cameraY = 0;
+let targetCameraX = 0;
+let targetCameraY = 0;
+let simSpeed = 1.0;
+
+const stars = [];
+for (let i = 0; i < 60; i++) {
+    stars.push({
+        x: Math.random() * 800,
+        y: Math.random() * 600,
+        size: Math.random() * 1.8 + 0.5,
+        alpha: Math.random() * 0.8 + 0.2
+    });
+}
 
 function resizeCanvas() {
     const container = canvas.parentElement;
@@ -260,6 +273,7 @@ function buildScenario() {
         const mass = parseFloat(trolleyMassInput.value) || 50;
         activeBodies.trolley = Bodies.rectangle(logicalWidth/2 - 100, groundY - 50, 100, 80, { mass: mass, friction: 0.05, restitution: 0.2 });
         World.add(world, activeBodies.trolley);
+        activeBodies.simVelocity = 0;
     } 
     else if (currentScenario === 'rocket') {
         engine.gravity.y = 1; // Earth gravity
@@ -270,6 +284,7 @@ function buildScenario() {
         activeBodies.isThrusting = false;
         activeBodies.launchInitiated = false;
         activeBodies.rocketLaunchTime = 0;
+        activeBodies.simVelocity = 0;
     }
     else if (currentScenario === 'braking') {
         engine.gravity.scale = 0.001; // default
@@ -284,6 +299,7 @@ function buildScenario() {
         World.add(world, [activeBodies.car, activeBodies.box]);
         activeBodies.braking = false;
         activeBodies.hasBraked = false;
+        activeBodies.elapsedTimeBraking = 0;
     }
     else if (currentScenario === 'race') {
         engine.gravity.y = 0; // Top-Down view (no vertical gravity)
@@ -293,6 +309,8 @@ function buildScenario() {
         activeBodies.car = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 + 50, 80, 30, { mass: 1000, frictionAir: 0.05, restitution: 0 });
         activeBodies.truck = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 - 50, 120, 40, { mass: tMass, frictionAir: 0.05, restitution: 0 });
         World.add(world, [activeBodies.car, activeBodies.truck]);
+        activeBodies.car.simVelocity = 0;
+        activeBodies.truck.simVelocity = 0;
     }
     
     elapsedTime = 0;
@@ -316,22 +334,19 @@ function updatePhysics(dt) {
 
     if (currentScenario === 'trolley' && activeBodies.trolley) {
         const force = parseFloat(trolleyForce.value) || 0;
-        // applyForce takes a vector. Multiply by a small scale to make it look right.
         Body.applyForce(activeBodies.trolley, activeBodies.trolley.position, { x: force * 0.0001, y: 0 });
         
         const a = force / activeBodies.trolley.mass;
-        const v = activeBodies.trolley.velocity.x * 2; // Scale for display
+        activeBodies.simVelocity = (activeBodies.simVelocity || 0) + a * dt;
         
         netForceValue.textContent = force.toFixed(1);
         accelValue.textContent = a.toFixed(2);
-        velValue.textContent = v.toFixed(2);
+        velValue.textContent = activeBodies.simVelocity.toFixed(2);
         updateStatusMessage(force > 0 ? `Troli dipercepat (a = ${a.toFixed(2)} m/s²)` : "Troli Diam");
     }
     else if (currentScenario === 'rocket' && activeBodies.rocket) {
         const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
         if (thrust > 0) {
-            // gravity force = mass * gravity.y * gravity.scale = 100 * 1 * 0.01 = 1.0.
-            // Weight = 980 N. So 1 N = 1.0 / 980 = 0.0010204.
             const forceScale = 1.0 / 980;
             Body.applyForce(activeBodies.rocket, activeBodies.rocket.position, { x: 0, y: -thrust * forceScale });
             for(let i=0; i<3; i++) {
@@ -347,19 +362,22 @@ function updatePhysics(dt) {
         }
         
         const isOnGround = activeBodies.rocket.position.y >= groundY - 73;
-        const weight = activeBodies.rocket.mass * 9.8; // Menggunakan g = 9.8
+        const weight = activeBodies.rocket.mass * 9.8; 
         
         let netForce = thrust - weight;
-        // Jika di landasan dan gaya dorong tidak cukup untuk mengangkat, netForce = 0 (diimbangi gaya normal)
         if (isOnGround && netForce <= 0) netForce = 0;
         
         let a = netForce / activeBodies.rocket.mass;
-        let v = -activeBodies.rocket.velocity.y * 2;
         
-        // Update dashboard nilai fisika
+        if (isOnGround && netForce <= 0) {
+            activeBodies.simVelocity = 0;
+        } else {
+            activeBodies.simVelocity = (activeBodies.simVelocity || 0) + a * dt;
+        }
+        
         netForceValue.textContent = Math.abs(netForce).toFixed(1);
         accelValue.textContent = a.toFixed(2);
-        velValue.textContent = v.toFixed(2);
+        velValue.textContent = activeBodies.simVelocity.toFixed(2);
         if (activeBodies.launchInitiated && isOnGround) activeBodies.rocketLaunchTime += dt;
         
         let msg = "";
@@ -369,21 +387,22 @@ function updatePhysics(dt) {
         updateStatusMessage(msg);
     }
     else if (currentScenario === 'braking' && activeBodies.car) {
+        let startSpeed = parseFloat(carSpeed.value) || 15;
         if (activeBodies.braking) {
-            // Strong braking force backwards
             Body.applyForce(activeBodies.car, activeBodies.car.position, { x: -0.15, y: 0 });
             if (activeBodies.car.velocity.x < 0) {
                 Body.setVelocity(activeBodies.car, {x:0, y:0});
                 activeBodies.braking = false;
             }
+            activeBodies.elapsedTimeBraking = (activeBodies.elapsedTimeBraking || 0) + dt;
+            let vBox = Math.max(0, startSpeed - 2.94 * activeBodies.elapsedTimeBraking); 
+            velValue.textContent = vBox.toFixed(2);
+        } else {
+            velValue.textContent = startSpeed.toFixed(2);
         }
-        
-        const v = activeBodies.car.velocity.x * 2;
-        const vBox = activeBodies.box.velocity.x * 2;
         
         netForceValue.textContent = "-";
         accelValue.textContent = "-";
-        velValue.textContent = vBox.toFixed(2);
         updateStatusMessage(activeBodies.braking ? "Mobil Direm! Kotak terdorong (Inersia)." : "Mobil Melaju Konstan");
     }
     else if (currentScenario === 'race' && activeBodies.car) {
@@ -393,11 +412,12 @@ function updatePhysics(dt) {
         
         const a_car = force / activeBodies.car.mass;
         const a_truck = force / activeBodies.truck.mass;
-        const v = activeBodies.car.velocity.x * 2;
+        activeBodies.car.simVelocity = (activeBodies.car.simVelocity || 0) + a_car * dt;
+        activeBodies.truck.simVelocity = (activeBodies.truck.simVelocity || 0) + a_truck * dt;
         
         netForceValue.textContent = force.toFixed(1);
         accelValue.textContent = a_car.toFixed(2);
-        velValue.textContent = v.toFixed(2);
+        velValue.textContent = activeBodies.car.simVelocity.toFixed(2);
         
         updateStatusMessage(`a(mobil)=${a_car.toFixed(2)} vs a(truk)=${a_truck.toFixed(2)}`);
     }
@@ -427,31 +447,27 @@ function updatePhysics(dt) {
         }
     }
     
-    // --- CAMERA & MOUSE UPDATE ---
+    // --- CAMERA TARGET UPDATE ---
     if (currentScenario === 'trolley' && activeBodies.trolley) {
-        cameraX = activeBodies.trolley.position.x - 200;
-        cameraY = 0;
+        targetCameraX = activeBodies.trolley.position.x - 200;
+        targetCameraY = 0;
     } else if (currentScenario === 'rocket' && activeBodies.rocket) {
-        cameraX = 0;
+        targetCameraX = 0;
         const threshold = logicalHeight - 250;
         if (activeBodies.rocket.position.y < threshold) {
-            cameraY = activeBodies.rocket.position.y - threshold;
+            targetCameraY = activeBodies.rocket.position.y - threshold;
         } else {
-            cameraY = 0;
+            targetCameraY = 0;
         }
     } else if (currentScenario === 'race' && activeBodies.car && activeBodies.truck) {
         const leaderX = Math.max(activeBodies.car.position.x, activeBodies.truck.position.x);
-        cameraX = leaderX - 200;
-        cameraY = 0;
+        targetCameraX = leaderX - 200;
+        targetCameraY = 0;
     } else if (currentScenario === 'braking' && activeBodies.car) {
         if (!activeBodies.braking) {
-            cameraX = activeBodies.car.position.x - 200;
+            targetCameraX = activeBodies.car.position.x - 200;
         }
-        cameraY = 0;
-    }
-    
-    if (mouseConstraint && mouseConstraint.mouse) {
-        Matter.Mouse.setOffset(mouseConstraint.mouse, { x: cameraX, y: cameraY });
+        targetCameraY = 0;
     }
     
     timeValue.textContent = elapsedTime.toFixed(2);
@@ -461,7 +477,7 @@ function drawScene() {
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     const groundY = logicalHeight - 50;
     
-    // 1. SCREEN-SPACE BACKGROUND (Solid Colors)
+    // 1. SCREEN-SPACE BACKGROUND (Solid Colors & Gradients)
     if (currentScenario === 'trolley') {
         // Wall solid background
         ctx.fillStyle = '#fef3c7'; // Warm Yellowish White Wall
@@ -474,17 +490,67 @@ function drawScene() {
         ctx.fillStyle = '#22c55e';
         ctx.fillRect(0, 0, logicalWidth, logicalHeight);
     } else {
-        // Sky Gradient
+        // Sky Gradient transition to Space based on cameraY
+        // spaceFactor is 1.0 when roket ascends ~1800px
+        const spaceFactor = Math.min(1, Math.max(0, -cameraY / 1800));
+        
         let skyGradient = ctx.createLinearGradient(0, 0, 0, logicalHeight);
-        skyGradient.addColorStop(0, '#bae6fd');
-        skyGradient.addColorStop(1, '#f0f9ff');
+        
+        // Day gradient colors (bae6fd -> f0f9ff)
+        // Space gradient color (020617 -> 0f172a)
+        let r1 = Math.round(186 + (2 - 186) * spaceFactor);
+        let g1 = Math.round(230 + (6 - 230) * spaceFactor);
+        let b1 = Math.round(253 + (23 - 253) * spaceFactor);
+        
+        let r2 = Math.round(240 + (15 - 240) * spaceFactor);
+        let g2 = Math.round(249 + (23 - 249) * spaceFactor);
+        let b2 = Math.round(255 + (42 - 255) * spaceFactor);
+        
+        skyGradient.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
+        skyGradient.addColorStop(1, `rgb(${r2}, ${g2}, ${b2})`);
         ctx.fillStyle = skyGradient;
         ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+        
+        // Draw Stars if high enough
+        if (spaceFactor > 0.1) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, (spaceFactor - 0.1) * 1.25);
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(s => {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
+                ctx.fill();
+            });
+            ctx.restore();
+        }
     }
     
     // 2. WORLD-SPACE DRAWINGS (Translated by Camera)
     ctx.save();
     ctx.translate(-cameraX, -cameraY);
+    
+    // Draw Moon in world-space for Rocket Mode
+    if (currentScenario === 'rocket') {
+        const moonX = logicalWidth / 2 + 100;
+        const moonY = -2500;
+        
+        // Moon Glow
+        let glow = ctx.createRadialGradient(moonX, moonY, 10, moonX, moonY, 80);
+        glow.addColorStop(0, 'rgba(254, 240, 138, 0.4)');
+        glow.addColorStop(1, 'rgba(254, 240, 138, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(moonX, moonY, 80, 0, Math.PI*2); ctx.fill();
+        
+        // Moon Body
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath(); ctx.arc(moonX, moonY, 40, 0, Math.PI*2); ctx.fill();
+        
+        // Craters
+        ctx.fillStyle = '#eab308';
+        ctx.beginPath(); ctx.arc(moonX - 15, moonY - 10, 7, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(moonX + 10, moonY + 15, 5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(moonX - 5, moonY + 20, 4, 0, Math.PI*2); ctx.fill();
+    }
     
     if (currentScenario === 'trolley') {
         // Draw repeating baseboard
@@ -507,7 +573,8 @@ function drawScene() {
             const force = parseFloat(trolleyForce.value) || 0;
             if (force > 0 && isPlaying) {
                 drawPersonPushing(t.position.x - 100, groundY);
-                drawArrow(t.position.x - 60, groundY - 50, force * 0.5, 'positive', '#ef4444', `Dorong: ${force}N`);
+                // Panah diposisikan di atas kepala orang pendorong (yaitu y = groundY - 110)
+                drawArrow(t.position.x - 100, groundY - 110, force * 0.5, 'positive', '#ef4444', `Dorong: ${force}N`);
             }
         }
     }
@@ -671,7 +738,15 @@ function simulationLoop(timestamp) {
     
     // Always update physics if playing or dragging
     if (isPlaying || mouseConstraint.mouse.button !== -1) {
-        updatePhysics(Math.min(dt, 0.1));
+        updatePhysics(Math.min(dt * simSpeed, 0.1));
+    }
+    
+    // Smooth camera transition (lerp)
+    cameraX += (targetCameraX - cameraX) * 0.08;
+    cameraY += (targetCameraY - cameraY) * 0.08;
+    
+    if (mouseConstraint && mouseConstraint.mouse) {
+        Matter.Mouse.setOffset(mouseConstraint.mouse, { x: cameraX, y: cameraY });
     }
     
     drawScene();
@@ -686,6 +761,8 @@ function resetSim() {
     lastTime = 0;
     cameraX = 0;
     cameraY = 0;
+    targetCameraX = 0;
+    targetCameraY = 0;
     if (mouseConstraint && mouseConstraint.mouse) {
         Matter.Mouse.setOffset(mouseConstraint.mouse, { x: 0, y: 0 });
     }
@@ -776,6 +853,29 @@ btnBrake.addEventListener('click', () => {
     el.addEventListener('input', () => { if (!isPlaying) resetSim(); });
 });
 
+// Speed Controls
+const btnSpeed1 = document.getElementById('btnSpeed1');
+const btnSpeed05 = document.getElementById('btnSpeed05');
+const btnSpeed025 = document.getElementById('btnSpeed025');
+
+function setSpeed(speed, activeBtn) {
+    simSpeed = speed;
+    [btnSpeed1, btnSpeed05, btnSpeed025].forEach(btn => {
+        if(btn) {
+            btn.style.backgroundColor = '';
+            btn.style.color = '';
+        }
+    });
+    if(activeBtn) {
+        activeBtn.style.backgroundColor = '#3b82f6';
+        activeBtn.style.color = '#ffffff';
+    }
+}
+
+if(btnSpeed1) btnSpeed1.addEventListener('click', () => setSpeed(1.0, btnSpeed1));
+if(btnSpeed05) btnSpeed05.addEventListener('click', () => setSpeed(0.5, btnSpeed05));
+if(btnSpeed025) btnSpeed025.addEventListener('click', () => setSpeed(0.25, btnSpeed025));
+
 // Drag listener to start rendering if dragged while paused
 Events.on(mouseConstraint, 'startdrag', () => {
     if (!isPlaying) {
@@ -787,5 +887,6 @@ Events.on(mouseConstraint, 'startdrag', () => {
 // Init
 setTimeout(() => {
     resizeCanvas();
+    if(btnSpeed1) setSpeed(1.0, btnSpeed1); // set initial speed style
     scenarioSelect.dispatchEvent(new Event('change'));
 }, 100);
