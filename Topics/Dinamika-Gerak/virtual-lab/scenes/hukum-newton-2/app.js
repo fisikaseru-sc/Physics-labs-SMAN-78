@@ -49,6 +49,7 @@ const netForceValue = document.getElementById('netForceValue');
 const accelValue = document.getElementById('accelValue');
 const timeValue = document.getElementById('timeValue');
 const statusMessage = document.getElementById('statusMessage');
+const conclusionText = document.getElementById('conclusionText');
 
 const statForce = document.getElementById('statForce');
 const statAccel = document.getElementById('statAccel');
@@ -337,6 +338,7 @@ function buildScenario() {
         activeBodies.truck.simVelocity = 0;
     }
     
+    updateConclusionText();
     elapsedTime = 0;
     particles = [];
 }
@@ -838,6 +840,7 @@ function resetSim() {
     if (currentScenario === 'rocket') btnLaunch.textContent = "🚀 LUNCURKAN!";
     
     toggleInputs(false);
+    updateConclusionText();
     drawScene();
 }
 
@@ -999,3 +1002,85 @@ setTimeout(() => {
     if(btnSpeed1) setSpeed(1.0, btnSpeed1); // set initial speed style
     scenarioSelect.dispatchEvent(new Event('change'));
 }, 100);
+
+function updateConclusionText() {
+    if (!conclusionText) return;
+    
+    if (currentScenario === 'trolley') {
+        const force = Math.max(0, Math.min(1000, parseFloat(trolleyForce.value) || 0));
+        const mass = activeBodies.trolley ? activeBodies.trolley.mass : 50;
+        const a = force / mass;
+        if (!isPlaying && elapsedTime === 0) {
+            conclusionText.textContent = `Hukum II Newton menyatakan a = ΣF / m. Gaya ${force} N pada massa ${mass} kg menghasilkan percepatan ${a.toFixed(2)} m/s².`;
+        } else {
+            conclusionText.textContent = `Gaya bersih F = ${force} N mempercepat troli bermassa m = ${mass} kg dengan percepatan a = ${a.toFixed(2)} m/s² secara konstan.`;
+        }
+    } 
+    else if (currentScenario === 'race') {
+        const force = Math.max(0, Math.min(5000, parseFloat(raceForce.value) || 0));
+        const m_car = activeBodies.car ? activeBodies.car.mass : 1000;
+        const m_truck = activeBodies.truck ? activeBodies.truck.mass : 5000;
+        const a_car = force / m_car;
+        const a_truck = force / m_truck;
+        
+        if (!isPlaying && elapsedTime === 0) {
+            conclusionText.textContent = `Dengan gaya yang sama (${force} N), Mobil (m = ${m_car} kg) dan Truk (m = ${m_truck} kg) akan memiliki percepatan yang berbeda.`;
+        } else if (isPlaying) {
+            conclusionText.textContent = `Mobil (a = ${a_car.toFixed(2)} m/s²) melaju lebih cepat daripada Truk (a = ${a_truck.toFixed(2)} m/s²) karena massanya jauh lebih kecil.`;
+        } else {
+            // Finished
+            const carX = activeBodies.car ? activeBodies.car.position.x : 0;
+            if (carX > 2000) {
+                conclusionText.textContent = `Mobil menang karena massanya yang ringan membutuhkan sedikit inersia untuk berakselerasi kencang (${a_car.toFixed(2)} m/s²).`;
+            } else {
+                conclusionText.textContent = `Balapan selesai! Percepatan dipengaruhi secara terbalik oleh massa benda (a ∝ 1/m).`;
+            }
+        }
+    } 
+    else if (currentScenario === 'rocket') {
+        const thrust = Math.max(0, Math.min(20000, parseFloat(rocketThrust.value) || 0));
+        const mass = activeBodies.rocket ? activeBodies.rocket.mass : 100;
+        const weight = mass * 9.8;
+        
+        if (!isPlaying && elapsedTime === 0) {
+            conclusionText.textContent = `Hukum III Newton (Aksi-Reaksi): Gaya dorong gas roket ke bawah (Aksi) akan menghasilkan gaya dorong roket ke atas (Reaksi) dengan besar yang sama.`;
+        } else if (isPlaying) {
+            if (thrust > weight) {
+                conclusionText.textContent = `Gaya aksi mesin sebesar ${thrust} N mendorong gas ke bawah, menghasilkan gaya reaksi ${thrust} N ke atas yang melebihi berat roket (${weight.toFixed(0)} N).`;
+            } else {
+                conclusionText.textContent = `Gaya dorong (${thrust} N) tidak cukup mengatasi gaya berat roket (${weight.toFixed(0)} N) ke bawah. Roket tetap di landasan.`;
+            }
+        } else {
+            // Stopped / finished
+            if (activeBodies.rocket && activeBodies.rocket.position.y <= (logicalHeight - 50 - 73)) {
+                const r = activeBodies.rocket;
+                const moon = activeBodies.moon;
+                if (moon) {
+                    let dist = Math.hypot(r.position.x - moon.position.x, r.position.y - moon.position.y);
+                    if (dist < 118) {
+                        if (activeBodies.simVelocity <= 8.0) {
+                            conclusionText.textContent = `Mendarat dengan selamat di Bulan! Kecepatan terkendali karena pengurangan thrust di saat yang tepat (Aksi = Reaksi).`;
+                        } else {
+                            conclusionText.textContent = `Roket hancur menabrak Bulan karena gaya reaksi dorong tidak diaktifkan untuk memperlambat jatuh bebas gravitasi Bulan.`;
+                        }
+                    } else {
+                        conclusionText.textContent = `Roket gagal meluncur ke Bulan karena gaya dorong gas (Aksi) tidak melebihi gaya berat roket (Reaksi gravitasi Bumi).`;
+                    }
+                }
+            } else {
+                conclusionText.textContent = `Gaya aksi gas ke bawah harus lebih besar dari berat roket agar dapat lepas landas (Hukum Aksi-Reaksi).`;
+            }
+        }
+    } 
+    else if (currentScenario === 'braking') {
+        const startSpeed = parseFloat(carSpeed.value) || 0;
+        
+        if (!isPlaying && elapsedTime === 0) {
+            conclusionText.textContent = `Kerangka Inersia: Kotak diam di atas mobil yang melaju konstan (${startSpeed} m/s). Hukum I Newton berlaku di kerangka mobil.`;
+        } else if (activeBodies.braking) {
+            conclusionText.textContent = `Mobil direm mendadak. Kotak terdorong ke depan karena mempertahankan keadaan geraknya (kelembaman/inersia) terhadap mobil yang melambat.`;
+        } else {
+            conclusionText.textContent = `Mobil telah berhenti sepenuhnya. Kotak tergelincir jatuh karena tidak diikat (inersia mempertahankan kecepatan awal ${startSpeed} m/s).`;
+        }
+    }
+}

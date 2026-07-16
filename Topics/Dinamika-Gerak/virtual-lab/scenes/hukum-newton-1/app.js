@@ -179,18 +179,43 @@ function updatePhysics(dt) {
 }
 
 function updateStatusMessage(netForce) {
+    const scenario = scenarioSelect.value;
+    
     if (Math.abs(box.velocity) < 0.01 && netForce === 0) {
         statusMessage.textContent = "Benda Diam (Resultan Gaya = 0)";
         statusMessage.style.borderColor = "rgba(255, 255, 255, 0.1)";
-        conclusionText.textContent = "Sesuai Hukum I Newton: Benda yang diam akan tetap diam karena Resultan Gaya = 0.";
+        
+        if (scenario === 'tariktambang') {
+            conclusionText.textContent = "Tarik tambang seimbang (ΣF = 0). Gaya tarik kiri sama kuat dengan gaya tarik kanan, tambang tetap diam.";
+        } else if (scenario === 'gesekan') {
+            conclusionText.textContent = "Gaya dorong dilawan sepenuhnya oleh gaya gesek statis jalan (ΣF = 0). Meja tetap diam.";
+        } else if (scenario === 'berlawanan') {
+            conclusionText.textContent = "Dua gaya berlawanan memiliki besar yang sama sehingga saling meniadakan (ΣF = 0). Benda tetap diam.";
+        } else {
+            conclusionText.textContent = "Sesuai Hukum I Newton: Benda yang diam akan tetap diam karena Resultan Gaya = 0.";
+        }
     } else if (Math.abs(box.velocity) >= 0.01 && netForce === 0) {
         statusMessage.textContent = "Benda Bergerak Kecepatan Konstan (Resultan Gaya = 0)";
         statusMessage.style.borderColor = "#10b981";
-        conclusionText.textContent = "Sesuai Hukum I Newton: Benda yang bergerak akan terus bergerak dengan kecepatan konstan karena Resultan Gaya = 0.";
+        
+        if (scenario === 'konstan') {
+            conclusionText.textContent = "Gaya mesin mobil diseimbangkan sempurna oleh hambatan udara & jalan (ΣF = 0). Mobil bergerak konstan.";
+        } else {
+            conclusionText.textContent = "Sesuai Hukum I Newton: Benda yang bergerak akan terus bergerak dengan kecepatan konstan karena Resultan Gaya = 0.";
+        }
     } else {
         statusMessage.textContent = "Benda Mengalami Percepatan (Resultan Gaya ≠ 0)";
         statusMessage.style.borderColor = "#3b82f6";
-        conclusionText.textContent = "Resultan Gaya tidak nol menyebabkan benda berubah gerak (dipercepat/diperlambat).";
+        
+        if (scenario === 'searah') {
+            conclusionText.textContent = "Gaya dorong searah menjumlahkan kekuatan (ΣF = F1 + F2). Benda dipercepat maju!";
+        } else if (scenario === 'berlawanan') {
+            conclusionText.textContent = "Gaya berlawanan tidak seimbang (ΣF = F1 - F2). Benda dipercepat ke arah gaya yang lebih dominan.";
+        } else if (scenario === 'gesekan') {
+            conclusionText.textContent = "Gaya dorong berhasil melampaui gaya gesek statis maksimum (ΣF > 0). Meja meluncur dipercepat!";
+        } else {
+            conclusionText.textContent = "Resultan Gaya tidak nol menyebabkan benda mengalami perubahan kecepatan (dipercepat atau diperlambat).";
+        }
     }
 }
 
