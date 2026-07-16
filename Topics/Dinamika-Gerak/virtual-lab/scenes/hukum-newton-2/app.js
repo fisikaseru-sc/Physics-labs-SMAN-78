@@ -245,20 +245,23 @@ function buildScenario() {
     World.add(world, ground);
 
     if (currentScenario === 'trolley') {
+        engine.gravity.scale = 0.001; // default
         const mass = parseFloat(trolleyMassSelect.value) || 10;
         activeBodies.trolley = Bodies.rectangle(logicalWidth/2 - 100, groundY - 50, 100, 80, { mass: mass, friction: 0.05, restitution: 0.2 });
         World.add(world, activeBodies.trolley);
     } 
     else if (currentScenario === 'rocket') {
         engine.gravity.y = 1; // Earth gravity
+        engine.gravity.scale = 0.01; // 10x visual scale for rocket to accelerate nicely
         // Match visual dimensions of the SpaceX rocket perfectly (width 30, height 145)
-        activeBodies.rocket = Bodies.rectangle(logicalWidth/2, groundY - 72.5, 30, 145, { mass: 100, frictionAir: 0.02, friction: 0.5, restitution: 0 });
+        activeBodies.rocket = Bodies.rectangle(logicalWidth/2, groundY - 72.5, 30, 145, { mass: 100, frictionAir: 0.002, friction: 0.5, restitution: 0 });
         World.add(world, activeBodies.rocket);
         activeBodies.isThrusting = false;
         activeBodies.launchInitiated = false;
         activeBodies.rocketLaunchTime = 0;
     }
     else if (currentScenario === 'braking') {
+        engine.gravity.scale = 0.001; // default
         activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.01 });
         activeBodies.box = Bodies.rectangle(logicalWidth/2 - 150, groundY - 75, 40, 30, { mass: 50, friction: 0.3 }); // Mu=0.3
         
@@ -273,6 +276,7 @@ function buildScenario() {
     }
     else if (currentScenario === 'race') {
         engine.gravity.y = 0; // Top-Down view (no vertical gravity)
+        engine.gravity.scale = 0.001; // default
         
         const tMass = parseFloat(document.getElementById('truckMass')?.value) || 5000;
         activeBodies.car = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 + 50, 80, 30, { mass: 1000, frictionAir: 0.05, restitution: 0 });
@@ -313,7 +317,10 @@ function updatePhysics(dt) {
     else if (currentScenario === 'rocket' && activeBodies.rocket) {
         const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
         if (thrust > 0) {
-            Body.applyForce(activeBodies.rocket, activeBodies.rocket.position, { x: 0, y: -thrust * 0.0001 });
+            // gravity force = mass * gravity.y * gravity.scale = 100 * 1 * 0.01 = 1.0.
+            // Weight = 980 N. So 1 N = 1.0 / 980 = 0.0010204.
+            const forceScale = 1.0 / 980;
+            Body.applyForce(activeBodies.rocket, activeBodies.rocket.position, { x: 0, y: -thrust * forceScale });
             for(let i=0; i<3; i++) {
                 particles.push({
                     x: activeBodies.rocket.position.x + (Math.random()*16-8),
