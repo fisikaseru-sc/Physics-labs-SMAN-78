@@ -174,11 +174,6 @@ main {
     justify-content: center;
 }
 
-.time-box {
-    background: rgba(16, 185, 129, 0.2);
-    border-color: rgba(16, 185, 129, 0.4);
-}
-
 .stat-box .label {
     display: block;
     font-size: 0.8rem;

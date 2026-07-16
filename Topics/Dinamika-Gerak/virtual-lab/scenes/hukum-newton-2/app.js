@@ -47,7 +47,6 @@ const tugOfWarControls = document.getElementById('tugOfWarControls');
 const tugLeftForce = document.getElementById('tugLeftForce');
 const tugRightForce = document.getElementById('tugRightForce');
 
-const speedBar = document.getElementById('speedBar');
 const velValue = document.getElementById('velValue');
 const netForceValue = document.getElementById('netForceValue');
 const accelValue = document.getElementById('accelValue');
@@ -301,7 +300,6 @@ function updatePhysics(dt) {
         netForceValue.textContent = force.toFixed(1);
         accelValue.textContent = a_car.toFixed(2);
         velValue.textContent = v.toFixed(2);
-        if(speedBar) speedBar.style.width = Math.min(100, (v / 50) * 100) + '%';
         
         updateStatusMessage(`a(mobil)=${a_car.toFixed(2)} vs a(truk)=${a_truck.toFixed(2)}`);
     }
@@ -318,7 +316,6 @@ function updatePhysics(dt) {
         netForceValue.textContent = Math.abs(netForce).toFixed(1);
         accelValue.textContent = Math.abs(a).toFixed(2);
         velValue.textContent = v.toFixed(2);
-        if(speedBar) speedBar.style.width = Math.min(100, (v / 50) * 100) + '%';
         
         if (netForce > 0) updateStatusMessage("Benda Tertarik ke Kanan!");
         else if (netForce < 0) updateStatusMessage("Benda Tertarik ke Kiri!");
@@ -441,7 +438,6 @@ function resetSim() {
     netForceValue.textContent = '0';
     accelValue.textContent = '0.00';
     timeValue.textContent = '0.00';
-    if(speedBar) speedBar.style.width = '0%';
     updateStatusMessage("Siap (Coba seret objek dengan jari/mouse!)");
     
     drawScene();
