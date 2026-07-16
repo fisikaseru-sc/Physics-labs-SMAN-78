@@ -39,6 +39,7 @@ const btnLaunch = document.getElementById('btnLaunch');
 const brakingControls = document.getElementById('brakingControls');
 const carSpeed = document.getElementById('carSpeed');
 const btnBrake = document.getElementById('btnBrake');
+const brakingVehicleSelect = document.getElementById('brakingVehicleSelect');
 
 const raceControls = document.getElementById('raceControls');
 const raceForce = document.getElementById('raceForce');
@@ -290,13 +291,30 @@ function buildScenario() {
     }
     else if (currentScenario === 'braking') {
         engine.gravity.scale = 0.001; // default
-        // Restore car friction to 0.1 so box has friction with the car top, ground has 0 friction, and inertia to Infinity to prevent tipping over
-        activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.1, frictionAir: 0, inertia: Infinity });
-        activeBodies.box = Bodies.rectangle(logicalWidth/2 - 150, groundY - 75, 40, 30, { mass: 50, friction: 0.3, frictionAir: 0 });
         
-        let startSpeed = parseFloat(carSpeed.value) || 15;
+        const vehicleType = brakingVehicleSelect ? brakingVehicleSelect.value : 'family';
+        let carMass = 1200;
+        let carH = 60;
+        let boxYOffset = -75;
+        if (vehicleType === 'sports') {
+            carMass = 1500;
+            carH = 50;
+            boxYOffset = -65;
+        } else if (vehicleType === 'truck') {
+            carMass = 8000;
+            carH = 80;
+            boxYOffset = -95;
+        }
+        
+        // Restore car friction to 0.1 so box has friction with the car top, ground has 0 friction, and inertia to Infinity to prevent tipping over
+        activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - carH/2, 140, carH, { mass: carMass, friction: 0.1, frictionAir: 0, inertia: Infinity });
+        activeBodies.box = Bodies.rectangle(logicalWidth/2 - 150, groundY + boxYOffset, 40, 30, { mass: 50, friction: 0.3, frictionAir: 0 });
+        activeBodies.vehicleType = vehicleType;
+        
+        let startSpeed = parseFloat(carSpeed.value);
+        if (isNaN(startSpeed)) startSpeed = 15;
         if (startSpeed > 40) { startSpeed = 40; carSpeed.value = 40; }
-        else if (startSpeed < 5) { startSpeed = 5; carSpeed.value = 5; }
+        else if (startSpeed < 0) { startSpeed = 0; carSpeed.value = 0; }
         
         // Need to scale speed to Matter.js units (~0.5 of actual meter/s)
         Body.setVelocity(activeBodies.car, { x: startSpeed * 0.5, y: 0 });
@@ -393,10 +411,14 @@ function updatePhysics(dt) {
         updateStatusMessage(msg);
     }
     else if (currentScenario === 'braking' && activeBodies.car) {
-        let startSpeed = parseFloat(carSpeed.value) || 15;
+        let startSpeed = parseFloat(carSpeed.value);
+        if (isNaN(startSpeed)) startSpeed = 15;
+        if (startSpeed > 40) startSpeed = 40;
+        else if (startSpeed < 0) startSpeed = 0;
+        
         if (activeBodies.braking) {
-            Body.applyForce(activeBodies.car, activeBodies.car.position, { x: -0.15, y: 0 });
-            if (activeBodies.car.velocity.x < 0) {
+            Body.applyForce(activeBodies.car, activeBodies.car.position, { x: -0.00015 * activeBodies.car.mass, y: 0 });
+            if (activeBodies.car.velocity.x <= 0.05) {
                 Body.setVelocity(activeBodies.car, {x:0, y:0});
                 activeBodies.braking = false;
             }
@@ -708,7 +730,14 @@ function drawScene() {
         }
         
         if (activeBodies.car && activeBodies.box) {
-            drawCarObj(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
+            const type = activeBodies.vehicleType || 'family';
+            if (type === 'sports') {
+                drawSportsCar(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
+            } else if (type === 'truck') {
+                drawTruckObj(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
+            } else {
+                drawCarObj(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
+            }
             ctx.save();
             ctx.translate(activeBodies.box.position.x, activeBodies.box.position.y);
             ctx.rotate(activeBodies.box.angle);
@@ -885,7 +914,7 @@ btnBrake.addEventListener('click', () => {
 function toggleInputs(disabled) {
     const inputs = [
         scenarioSelect, trolleyMassInput, trolleyForce,
-        rocketThrust, carSpeed, raceForce,
+        rocketThrust, carSpeed, raceForce, brakingVehicleSelect,
         document.getElementById('truckMass')
     ];
     inputs.forEach(input => {
@@ -894,7 +923,7 @@ function toggleInputs(disabled) {
 }
 
 const truckMass = document.getElementById('truckMass');
-[trolleyMassInput, trolleyForce, rocketThrust, carSpeed, raceForce, truckMass].forEach(el => {
+[trolleyMassInput, trolleyForce, rocketThrust, carSpeed, raceForce, truckMass, brakingVehicleSelect].forEach(el => {
     if (el) {
         el.addEventListener('input', () => { if (!isPlaying) resetSim(); });
     }
@@ -922,7 +951,7 @@ const truckMass = document.getElementById('truckMass');
             } else if (el === rocketThrust) {
                 el.value = Math.max(0, Math.min(20000, val));
             } else if (el === carSpeed) {
-                el.value = Math.max(5, Math.min(40, val));
+                el.value = Math.max(0, Math.min(40, val));
             } else if (el === raceForce) {
                 el.value = Math.max(0, Math.min(5000, val));
             } else if (el === truckMass) {
