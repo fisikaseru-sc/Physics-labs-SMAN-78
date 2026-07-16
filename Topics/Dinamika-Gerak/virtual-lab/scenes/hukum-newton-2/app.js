@@ -300,6 +300,8 @@ function updatePhysics(dt) {
     // Convert dt (seconds) to milliseconds for Matter.js
     Engine.update(engine, dt * 1000);
     elapsedTime += dt;
+    
+    const groundY = logicalHeight - 50;
 
     if (currentScenario === 'trolley' && activeBodies.trolley) {
         const force = parseFloat(trolleyForce.value) || 0;
