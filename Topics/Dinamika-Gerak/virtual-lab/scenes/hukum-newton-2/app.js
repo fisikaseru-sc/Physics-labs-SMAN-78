@@ -123,14 +123,61 @@ function drawPersonPushing(x, y) {
 
 function drawRocketObj(x, y, angle, thrusting) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
-    ctx.fillStyle = '#cbd5e1'; ctx.fillRect(-20, -40, 40, 80);
-    ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.moveTo(-20, -40); ctx.lineTo(0, -80); ctx.lineTo(20, -40); ctx.fill();
-    ctx.fillStyle = '#3b82f6';
-    ctx.beginPath(); ctx.moveTo(-20, 20); ctx.lineTo(-40, 40); ctx.lineTo(-20, 40); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(20, 20); ctx.lineTo(40, 40); ctx.lineTo(20, 40); ctx.fill();
+    
+    // Main Body (White)
+    ctx.fillStyle = '#ffffff'; 
+    ctx.fillRect(-15, -40, 30, 100); 
+    
+    // Interstage (Black band)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-15, -10, 30, 10);
+    
+    // SpaceX Logo (text)
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.save();
+    ctx.translate(0, 25);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText("SPACEX", 0, 3);
+    ctx.restore();
+    
+    // Fairing (Nose Cone - White)
+    ctx.fillStyle = '#ffffff'; 
+    ctx.beginPath(); 
+    ctx.moveTo(-15, -40); 
+    ctx.bezierCurveTo(-15, -60, -5, -70, 0, -80);
+    ctx.bezierCurveTo(5, -70, 15, -60, 15, -40);
+    ctx.fill();
+    
+    // Landing Legs (Black)
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    // Left leg
+    ctx.beginPath(); ctx.moveTo(-15, 40); ctx.lineTo(-25, 60); ctx.stroke();
+    // Right leg
+    ctx.beginPath(); ctx.moveTo(15, 40); ctx.lineTo(25, 60); ctx.stroke();
+    
+    // Engine bells (Black)
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-10, 60, 20, 5);
+
     if (thrusting) {
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath(); ctx.moveTo(-15, 40); ctx.lineTo(0, 80 + Math.random()*20); ctx.lineTo(15, 40); ctx.fill();
+        // Core flame (White/Yellow)
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath(); 
+        ctx.moveTo(-12, 65); 
+        ctx.lineTo(0, 100 + Math.random()*40); 
+        ctx.lineTo(12, 65); 
+        ctx.fill();
+        
+        // Outer flame (Orange)
+        ctx.fillStyle = 'rgba(249, 115, 22, 0.6)';
+        ctx.beginPath(); 
+        ctx.moveTo(-15, 65); 
+        ctx.lineTo(0, 120 + Math.random()*50); 
+        ctx.lineTo(15, 65); 
+        ctx.fill();
     }
     ctx.restore();
 }
@@ -190,7 +237,8 @@ function buildScenario() {
     } 
     else if (currentScenario === 'rocket') {
         engine.gravity.y = 1; // Earth gravity
-        activeBodies.rocket = Bodies.rectangle(canvas.width/2, groundY - 60, 40, 120, { mass: 100, frictionAir: 0.02, friction: 0.5 });
+        // Match visual dimensions of the SpaceX rocket perfectly (width 30, height 145)
+        activeBodies.rocket = Bodies.rectangle(canvas.width/2, groundY - 72.5, 30, 145, { mass: 100, frictionAir: 0.02, friction: 0.5, restitution: 0 });
         World.add(world, activeBodies.rocket);
         activeBodies.isThrusting = false;
     }
@@ -207,11 +255,11 @@ function buildScenario() {
         activeBodies.braking = false;
     }
     else if (currentScenario === 'race') {
-        // Track 1 (Truck)
-        World.add(world, Bodies.rectangle(canvas.width/2, groundY - 80, canvas.width*3, 20, { isStatic: true }));
+        // Track 1 (Truck) - Upper Road platform
+        World.add(world, Bodies.rectangle(canvas.width/2, groundY - 70, canvas.width*3, 20, { isStatic: true }));
         
-        activeBodies.car = Bodies.rectangle(canvas.width/4 - 100, groundY - 20, 80, 30, { mass: 1000, friction: 0.05 });
-        activeBodies.truck = Bodies.rectangle(canvas.width/4 - 100, groundY - 110, 120, 60, { mass: 5000, friction: 0.05 });
+        activeBodies.car = Bodies.rectangle(canvas.width/4 - 100, groundY - 20, 80, 30, { mass: 1000, friction: 0.05, restitution: 0 });
+        activeBodies.truck = Bodies.rectangle(canvas.width/4 - 100, groundY - 110, 120, 60, { mass: 5000, friction: 0.05, restitution: 0 });
         World.add(world, [activeBodies.car, activeBodies.truck]);
     }
     
@@ -397,8 +445,19 @@ function drawScene() {
         }
     } 
     else if (currentScenario === 'race' && activeBodies.car) {
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(0, groundY - 90, canvas.width, 2);
+        // Draw Upper Road for Truck
+        ctx.fillStyle = '#64748b'; // Darker asphalt for contrast
+        ctx.fillRect(0, groundY - 80, canvas.width, 20);
+        
+        // Dashed lines for upper road
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for(let tx = 0; tx < canvas.width; tx += 40) {
+            ctx.moveTo(tx, groundY - 70);
+            ctx.lineTo(tx + 20, groundY - 70);
+        }
+        ctx.stroke();
         
         drawSportsCar(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
         drawTruckObj(activeBodies.truck.position.x, activeBodies.truck.position.y, activeBodies.truck.angle);
