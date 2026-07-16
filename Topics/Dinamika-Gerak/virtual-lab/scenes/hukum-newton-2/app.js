@@ -49,6 +49,11 @@ const accelValue = document.getElementById('accelValue');
 const timeValue = document.getElementById('timeValue');
 const statusMessage = document.getElementById('statusMessage');
 
+const statForce = document.getElementById('statForce');
+const statAccel = document.getElementById('statAccel');
+const statVel = document.getElementById('statVel');
+const statTime = document.getElementById('statTime');
+
 let isPlaying = false;
 let lastTime = 0;
 let elapsedTime = 0;
@@ -591,15 +596,8 @@ function resetSim() {
     velValue.textContent = '0.00';
     netForceValue.textContent = '0';
     accelValue.textContent = '0.00';
-    // Tampilkan overlayStats hanya untuk Troli dan Roket saat awal load/reset
-    const overlayStats = document.getElementById('overlayStats');
-    if (overlayStats) {
-        if (currentScenario === 'trolley' || currentScenario === 'rocket') {
-            overlayStats.style.display = 'grid'; 
-        } else {
-            overlayStats.style.display = 'none';
-        }
-    }
+    
+    updateDashboardVisibility(currentScenario);
     
     updateStatusMessage("Siap");
     if (currentScenario === 'rocket') btnLaunch.textContent = "🚀 LUNCURKAN!";
@@ -634,18 +632,30 @@ scenarioSelect.addEventListener('change', (e) => {
     else if(sc === 'rocket') rocketControls.style.display = 'block';
     else if(sc === 'braking') brakingControls.style.display = 'block';
     
-    // Tampilkan overlayStats hanya untuk Troli dan Roket
-    const overlayStats = document.getElementById('overlayStats');
-    if (overlayStats) {
-        if (sc === 'trolley' || sc === 'rocket') {
-            overlayStats.style.display = 'grid'; // Grid is used in CSS for .overlay-stats
-        } else {
-            overlayStats.style.display = 'none';
-        }
-    }
+    updateDashboardVisibility(sc);
     
     resetSim();
 });
+
+function updateDashboardVisibility(scenario) {
+    const overlayStats = document.getElementById('overlayStats');
+    if (!overlayStats) return;
+    
+    overlayStats.style.display = 'grid';
+    
+    if (statForce) statForce.style.display = '';
+    if (statAccel) statAccel.style.display = '';
+    if (statVel) statVel.style.display = '';
+    if (statTime) statTime.style.display = '';
+    
+    if (scenario === 'race') {
+        if (statAccel) statAccel.style.display = 'none';
+        if (statVel) statVel.style.display = 'none';
+    } else if (scenario === 'braking') {
+        if (statForce) statForce.style.display = 'none';
+        if (statAccel) statAccel.style.display = 'none';
+    }
+}
 
 btnLaunch.addEventListener('click', () => { 
     if(activeBodies.rocket) {
