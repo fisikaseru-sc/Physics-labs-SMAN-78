@@ -641,7 +641,7 @@ function updateDashboardVisibility(scenario) {
     const overlayStats = document.getElementById('overlayStats');
     if (!overlayStats) return;
     
-    overlayStats.style.display = 'grid';
+    overlayStats.style.display = 'flex';
     
     if (statForce) statForce.style.display = '';
     if (statAccel) statAccel.style.display = '';
