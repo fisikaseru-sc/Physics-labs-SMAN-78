@@ -119,6 +119,23 @@
         const container = document.getElementById('cardContainer');
         const btnGuru = document.getElementById('btnGuru');
 
+        // Fetch latest access from server
+        function syncAccessFromServer() {
+            fetch('https://api.restful-api.dev/objects/ff8081819d82fab6019f6b8365466fee')
+                .then(res => res.json())
+                .then(json => {
+                    if (json && json.data && Array.isArray(json.data.access)) {
+                        accessData = json.data.access;
+                        localStorage.setItem('dinamika_gerak_access', JSON.stringify(accessData));
+                        renderCards();
+                    }
+                })
+                .catch(err => console.error("Error fetching access data:", err));
+        }
+        
+        syncAccessFromServer();
+        setInterval(syncAccessFromServer, 10000);
+
         function toggleAccess(id) {
             if (accessData.includes(id)) {
                 accessData = accessData.filter(i => i !== id);
@@ -127,6 +144,18 @@
             }
             localStorage.setItem('dinamika_gerak_access', JSON.stringify(accessData));
             renderCards();
+
+            // Sync to server
+            fetch('https://api.restful-api.dev/objects/ff8081819d82fab6019f6b8365466fee', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: "sman78_physics_access",
+                    data: { access: accessData }
+                })
+            }).catch(err => console.error("Error updating access data:", err));
         }
 
         function renderCards() {
