@@ -41,13 +41,12 @@
                     <span class="label">Percepatan (a)</span>
                     <div><span class="value" id="accelValue">0.00</span> <span class="unit">m/s²</span></div>
                 </div>
-                <div class="stat-box" style="flex: 2;">
-                    <span class="label">Kecepatan (Bar Meter)</span>
-                    <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
-                        <div style="flex: 1; height: 12px; background: #334155; border-radius: 6px; overflow: hidden; border: 1px solid #475569;">
-                            <div id="speedBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #ef4444); transition: width 0.1s;"></div>
-                        </div>
-                        <div style="min-width: 60px; text-align: right;"><span class="value" id="velValue">0.00</span> <span class="unit">m/s</span></div>
+                <div class="stat-box" style="position: relative; overflow: hidden;">
+                    <span class="label">Kecepatan (v)</span>
+                    <div><span class="value" id="velValue">0.00</span> <span class="unit">m/s</span></div>
+                    <!-- Minimalist Speed Bar at bottom -->
+                    <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(0,0,0,0.3);">
+                        <div id="speedBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #ef4444); transition: width 0.1s;"></div>
                     </div>
                 </div>
                 <div class="stat-box time-box">
