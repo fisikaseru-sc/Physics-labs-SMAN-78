@@ -271,7 +271,7 @@ function buildScenario() {
 
     if (currentScenario === 'trolley') {
         engine.gravity.scale = 0.001; // default
-        const mass = parseFloat(trolleyMassInput.value) || 50;
+        const mass = Math.max(5, Math.min(500, parseFloat(trolleyMassInput.value) || 50));
         activeBodies.trolley = Bodies.rectangle(logicalWidth/2 - 100, groundY - 50, 100, 80, { mass: mass, friction: 0.05, restitution: 0.2, inertia: Infinity });
         World.add(world, activeBodies.trolley);
         activeBodies.simVelocity = 0;
@@ -311,7 +311,7 @@ function buildScenario() {
         engine.gravity.y = 0; // Top-Down view (no vertical gravity)
         engine.gravity.scale = 0.001; // default
         
-        const tMass = parseFloat(document.getElementById('truckMass')?.value) || 5000;
+        const tMass = Math.max(1000, Math.min(20000, parseFloat(document.getElementById('truckMass')?.value) || 5000));
         activeBodies.car = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 + 50, 80, 30, { mass: 1000, frictionAir: 0.05, restitution: 0, inertia: Infinity });
         activeBodies.truck = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 - 50, 120, 40, { mass: tMass, frictionAir: 0.05, restitution: 0, inertia: Infinity });
         World.add(world, [activeBodies.car, activeBodies.truck]);
@@ -339,7 +339,7 @@ function updatePhysics(dt) {
     const groundY = logicalHeight - 50;
 
     if (currentScenario === 'trolley' && activeBodies.trolley) {
-        const force = parseFloat(trolleyForce.value) || 0;
+        const force = Math.max(0, Math.min(1000, parseFloat(trolleyForce.value) || 0));
         Body.applyForce(activeBodies.trolley, activeBodies.trolley.position, { x: force * 0.0001, y: 0 });
         
         const a = force / activeBodies.trolley.mass;
@@ -351,7 +351,7 @@ function updatePhysics(dt) {
         updateStatusMessage(force > 0 ? `Troli dipercepat (a = ${a.toFixed(2)} m/s²)` : "Troli Diam");
     }
     else if (currentScenario === 'rocket' && activeBodies.rocket) {
-        const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
+        const thrust = activeBodies.isThrusting ? Math.max(0, Math.min(20000, parseFloat(rocketThrust.value) || 0)) : 0;
         if (thrust > 0) {
             const forceScale = 1.0 / 980;
             Body.applyForce(activeBodies.rocket, activeBodies.rocket.position, { x: 0, y: -thrust * forceScale });
@@ -412,7 +412,7 @@ function updatePhysics(dt) {
         updateStatusMessage(activeBodies.braking ? "Mobil Direm! Kotak terdorong (Inersia)." : "Mobil Melaju Konstan");
     }
     else if (currentScenario === 'race' && activeBodies.car) {
-        const force = parseFloat(raceForce.value) || 0;
+        const force = Math.max(0, Math.min(5000, parseFloat(raceForce.value) || 0));
         Body.applyForce(activeBodies.car, activeBodies.car.position, { x: force * 0.00005, y: 0 });
         Body.applyForce(activeBodies.truck, activeBodies.truck.position, { x: force * 0.00005, y: 0 });
         
@@ -434,6 +434,7 @@ function updatePhysics(dt) {
             btnPlayPause.innerHTML = '▶ Mulai Simulasi';
             updateStatusMessage(msg);
             Body.setVelocity(body, {x: 0, y: 0});
+            toggleInputs(false);
         }
     };
 
@@ -807,6 +808,7 @@ function resetSim() {
     updateStatusMessage("Siap");
     if (currentScenario === 'rocket') btnLaunch.textContent = "🚀 LUNCURKAN!";
     
+    toggleInputs(false);
     drawScene();
 }
 
@@ -820,6 +822,7 @@ btnPlayPause.addEventListener('click', () => {
     } else {
         btnPlayPause.innerHTML = '▶ Lanjut';
     }
+    toggleInputs(isPlaying);
 });
 
 btnReset.addEventListener('click', resetSim);
@@ -879,8 +882,55 @@ btnBrake.addEventListener('click', () => {
     if(!isPlaying) btnPlayPause.click();
 });
 
-[trolleyMassInput, trolleyForce, rocketThrust, carSpeed, raceForce].forEach(el => {
-    el.addEventListener('input', () => { if (!isPlaying) resetSim(); });
+function toggleInputs(disabled) {
+    const inputs = [
+        scenarioSelect, trolleyMassInput, trolleyForce,
+        rocketThrust, carSpeed, raceForce,
+        document.getElementById('truckMass')
+    ];
+    inputs.forEach(input => {
+        if (input) input.disabled = disabled;
+    });
+}
+
+const truckMass = document.getElementById('truckMass');
+[trolleyMassInput, trolleyForce, rocketThrust, carSpeed, raceForce, truckMass].forEach(el => {
+    if (el) {
+        el.addEventListener('input', () => { if (!isPlaying) resetSim(); });
+    }
+});
+
+// Clean and validate inputs on change (blur)
+[trolleyMassInput, trolleyForce, rocketThrust, carSpeed, raceForce, truckMass].forEach(el => {
+    if (el) {
+        el.addEventListener('change', () => {
+            let val = parseFloat(el.value);
+            if (isNaN(val)) {
+                if (el === trolleyMassInput) el.value = 50;
+                else if (el === trolleyForce) el.value = 100;
+                else if (el === rocketThrust) el.value = 1000;
+                else if (el === carSpeed) el.value = 15;
+                else if (el === raceForce) el.value = 1000;
+                else if (el === truckMass) el.value = 5000;
+                val = parseFloat(el.value);
+            }
+            
+            if (el === trolleyMassInput) {
+                el.value = Math.max(5, Math.min(500, val));
+            } else if (el === trolleyForce) {
+                el.value = Math.max(0, Math.min(1000, val));
+            } else if (el === rocketThrust) {
+                el.value = Math.max(0, Math.min(20000, val));
+            } else if (el === carSpeed) {
+                el.value = Math.max(5, Math.min(40, val));
+            } else if (el === raceForce) {
+                el.value = Math.max(0, Math.min(5000, val));
+            } else if (el === truckMass) {
+                el.value = Math.max(1000, Math.min(20000, val));
+            }
+            if (!isPlaying) resetSim();
+        });
+    }
 });
 
 // Speed Controls

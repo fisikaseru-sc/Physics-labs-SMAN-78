@@ -66,16 +66,18 @@ resizeCanvas();
 
 function getEffectiveForces() {
     if (scenarioSelect.value === 'tariktambang') {
-        const numLeft = parseInt(numPeopleLeftInput.value) || 0;
-        const numRight = parseInt(numPeopleRightInput.value) || 0;
+        const numLeft = Math.max(0, Math.min(5, parseInt(numPeopleLeftInput.value) || 0));
+        const numRight = Math.max(0, Math.min(5, parseInt(numPeopleRightInput.value) || 0));
         return {
             f1: numLeft * FORCE_PER_PERSON, dir1: 'left',
             f2: numRight * FORCE_PER_PERSON, dir2: 'right'
         };
     } else {
+        const f1 = Math.max(0, Math.min(500, parseFloat(force1Input.value) || 0));
+        const f2 = Math.max(0, Math.min(500, parseFloat(force2Input.value) || 0));
         return {
-            f1: parseFloat(force1Input.value) || 0, dir1: dir1Select.value,
-            f2: parseFloat(force2Input.value) || 0, dir2: dir2Select.value
+            f1: f1, dir1: dir1Select.value,
+            f2: f2, dir2: dir2Select.value
         };
     }
 }
@@ -157,11 +159,13 @@ function updatePhysics(dt) {
             isPlaying = false; 
             btnPlayPause.textContent = 'Mulai Simulasi';
             btnPlayPause.style.backgroundColor = '';
+            toggleInputs(false);
         } else if (box.x <= -maxDistance) {
             box.x = -maxDistance;
             isPlaying = false; 
             btnPlayPause.textContent = 'Mulai Simulasi';
             btnPlayPause.style.backgroundColor = '';
+            toggleInputs(false);
         }
     }
     
@@ -519,6 +523,7 @@ btnPlayPause.addEventListener('click', () => {
     btnPlayPause.textContent = isPlaying ? 'Jeda Simulasi' : 'Mulai Simulasi';
     btnPlayPause.classList.toggle('primary', !isPlaying);
     btnPlayPause.style.backgroundColor = isPlaying ? '#f59e0b' : '';
+    toggleInputs(isPlaying);
 });
 
 function resetSim() {
@@ -535,6 +540,7 @@ function resetSim() {
     timeValue.textContent = '0.00';
     
     updateStatusMessage(0);
+    toggleInputs(false);
     drawScene();
 }
 
@@ -588,6 +594,17 @@ scenarioSelect.addEventListener('change', (e) => {
     drawScene();
 });
 
+function toggleInputs(disabled) {
+    const inputs = [
+        scenarioSelect, force1Input, force2Input, dir1Select, dir2Select,
+        frictionForceInput, massInput, numPeopleLeftInput, numPeopleRightInput,
+        customObject, customVelocity, btnSetVelocity
+    ];
+    inputs.forEach(input => {
+        if (input) input.disabled = disabled;
+    });
+}
+
 [force1Input, force2Input, frictionForceInput, massInput, numPeopleLeftInput, numPeopleRightInput].forEach(el => {
     el.addEventListener('input', () => {
         if (!isPlaying) drawScene();
@@ -601,13 +618,44 @@ scenarioSelect.addEventListener('change', (e) => {
 });
 
 btnSetVelocity.addEventListener('click', () => {
-    box.velocity = parseFloat(customVelocity.value) || 0;
+    let val = parseFloat(customVelocity.value) || 0;
+    val = Math.max(-20, Math.min(20, val));
+    customVelocity.value = val;
+    box.velocity = val;
     velValue.textContent = box.velocity.toFixed(2);
     if (!isPlaying) drawScene();
 });
 
 customObject.addEventListener('change', () => {
     if (!isPlaying) drawScene();
+});
+
+// Clean and validate inputs on change (blur)
+[force1Input, force2Input, frictionForceInput, massInput, numPeopleLeftInput, numPeopleRightInput, customVelocity].forEach(el => {
+    if (el) {
+        el.addEventListener('change', () => {
+            let val = parseFloat(el.value);
+            if (isNaN(val)) {
+                if (el === massInput) el.value = 50;
+                else if (el === numPeopleLeftInput || el === numPeopleRightInput) el.value = 3;
+                else el.value = 0;
+                val = parseFloat(el.value);
+            }
+            
+            if (el === massInput) {
+                el.value = Math.max(1, Math.min(1000, val));
+            } else if (el === force1Input || el === force2Input) {
+                el.value = Math.max(0, Math.min(500, val));
+            } else if (el === frictionForceInput) {
+                el.value = Math.max(0, Math.min(500, val));
+            } else if (el === numPeopleLeftInput || el === numPeopleRightInput) {
+                el.value = Math.max(0, Math.min(5, Math.round(val)));
+            } else if (el === customVelocity) {
+                el.value = Math.max(-20, Math.min(20, val));
+            }
+            if (!isPlaying) drawScene();
+        });
+    }
 });
 
 if(tabP2) {
