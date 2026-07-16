@@ -41,9 +41,14 @@
                     <span class="label">Percepatan (a)</span>
                     <div><span class="value" id="accelValue">0.00</span> <span class="unit">m/s²</span></div>
                 </div>
-                <div class="stat-box">
-                    <span class="label">Kecepatan Benda</span>
-                    <div><span class="value" id="velValue">0.00</span> <span class="unit">m/s</span></div>
+                <div class="stat-box" style="flex: 2;">
+                    <span class="label">Kecepatan (Bar Meter)</span>
+                    <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                        <div style="flex: 1; height: 12px; background: #334155; border-radius: 6px; overflow: hidden; border: 1px solid #475569;">
+                            <div id="speedBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #ef4444); transition: width 0.1s;"></div>
+                        </div>
+                        <div style="min-width: 60px; text-align: right;"><span class="value" id="velValue">0.00</span> <span class="unit">m/s</span></div>
+                    </div>
                 </div>
                 <div class="stat-box time-box">
                     <span class="label">Waktu (t)</span>
@@ -67,8 +72,10 @@
                     <label>Pilih Kasus Pembelajaran</label>
                     <select id="scenarioSelect" class="styled-select">
                         <option value="trolley">Troli Belanja (Hukum II Newton)</option>
-                        <option value="rocket">Peluncuran Roket (Aksi-Reaksi)</option>
-                        <option value="braking">Mobil Rem Mendadak (Kerangka Acuan)</option>
+                        <option value="race">🏎️ Mobil Sport vs Truk (Hukum II Newton)</option>
+                        <option value="tugofwar">🪢 Tarik Tambang (Resultan Gaya)</option>
+                        <option value="rocket">🚀 Peluncuran Roket (Aksi-Reaksi)</option>
+                        <option value="braking">🛑 Mobil Rem Mendadak (Inersia)</option>
                     </select>
                 </div>
 
@@ -85,6 +92,34 @@
                         <label>Gaya Dorong (N)</label>
                         <div class="input-row">
                             <input type="number" id="trolleyForce" min="0" value="100" class="number-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KONTROL BALAPAN (RACE) -->
+                <div id="raceControls" class="scenario-controls mt-10" style="display: none;">
+                    <div class="info-text mb-10" style="display:block;">Bandingkan percepatan dua kendaraan dengan gaya mesin yang sama. Mobil Sport (1.000 kg) vs Truk (5.000 kg).</div>
+                    <div class="control-group mt-10">
+                        <label>Gaya Mesin (N)</label>
+                        <div class="input-row">
+                            <input type="number" id="raceForce" min="1000" value="5000" step="1000" class="number-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KONTROL TARIK TAMBANG -->
+                <div id="tugOfWarControls" class="scenario-controls mt-10" style="display: none;">
+                    <div class="info-text mb-10" style="display:block;">Hitung Resultan Gaya (ΣF). Massa Benda = 50 kg.</div>
+                    <div class="control-group mt-10">
+                        <label>Gaya Tarik Kiri (N)</label>
+                        <div class="input-row">
+                            <input type="number" id="tugLeftForce" min="0" value="200" step="50" class="number-input" style="color: #ef4444;">
+                        </div>
+                    </div>
+                    <div class="control-group mt-10">
+                        <label>Gaya Tarik Kanan (N)</label>
+                        <div class="input-row">
+                            <input type="number" id="tugRightForce" min="0" value="250" step="50" class="number-input" style="color: #3b82f6;">
                         </div>
                     </div>
                 </div>

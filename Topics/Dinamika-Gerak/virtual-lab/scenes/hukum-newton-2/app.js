@@ -19,6 +19,15 @@ const brakingControls = document.getElementById('brakingControls');
 const carSpeed = document.getElementById('carSpeed');
 const btnBrake = document.getElementById('btnBrake');
 
+const raceControls = document.getElementById('raceControls');
+const raceForce = document.getElementById('raceForce');
+
+const tugOfWarControls = document.getElementById('tugOfWarControls');
+const tugLeftForce = document.getElementById('tugLeftForce');
+const tugRightForce = document.getElementById('tugRightForce');
+
+const speedBar = document.getElementById('speedBar');
+
 const velValue = document.getElementById('velValue');
 const netForceValue = document.getElementById('netForceValue');
 const accelValue = document.getElementById('accelValue');
@@ -39,6 +48,11 @@ const trolley = { x: 0, y: 0, v: 0, a: 0, mass: 10 };
 const rocket = { y: 0, v: 0, a: 0, mass: 100, thrusting: false };
 const car = { x: 0, v: 0, braking: false };
 const boxOnCar = { x: 0, v: 0, a: 0, mass: 50 };
+
+const carRace = { x: 0, v: 0, a: 0, mass: 1000 };
+const truckRace = { x: 0, v: 0, a: 0, mass: 5000 };
+const tugBox = { x: 0, v: 0, a: 0, mass: 50 };
+let particles = [];
 
 function resizeCanvas() {
     const container = canvas.parentElement;
@@ -174,6 +188,49 @@ function updatePhysics(dt) {
         accelValue.textContent = boxOnCar.a.toFixed(2);
         velValue.textContent = boxOnCar.v.toFixed(2);
         updateStatusMessage(car.braking ? "Mobil Direm! Kotak terdorong ke depan karena Inersia." : "Mobil Melaju Konstan");
+    } else if (currentScenario === 'race') {
+        const force = parseFloat(raceForce.value) || 0;
+        
+        carRace.a = force / carRace.mass;
+        truckRace.a = force / truckRace.mass;
+        
+        carRace.v += carRace.a * dt;
+        truckRace.v += truckRace.a * dt;
+        
+        carRace.x += carRace.v * dt;
+        truckRace.x += truckRace.v * dt;
+        
+        if (force > 0 && Math.random() > 0.5) {
+            particles.push({x: carRace.x * SCALE - 50, y: 0, vx: -Math.random()*20, life: 1});
+        }
+        
+        netForceValue.textContent = force.toFixed(1);
+        accelValue.textContent = carRace.a.toFixed(2) + " (Mobil)";
+        velValue.textContent = carRace.v.toFixed(2);
+        
+        let maxSpeed = 50; 
+        if(speedBar) speedBar.style.width = Math.min(100, (carRace.v / maxSpeed) * 100) + '%';
+        
+        updateStatusMessage(`Mobil sport jauh lebih cepat! a(mobil)=${carRace.a.toFixed(2)} vs a(truk)=${truckRace.a.toFixed(2)}`);
+        
+    } else if (currentScenario === 'tugofwar') {
+        const leftF = parseFloat(tugLeftForce.value) || 0;
+        const rightF = parseFloat(tugRightForce.value) || 0;
+        
+        const netForce = rightF - leftF;
+        tugBox.a = netForce / tugBox.mass;
+        tugBox.v += tugBox.a * dt;
+        tugBox.x += tugBox.v * dt;
+        
+        netForceValue.textContent = netForce.toFixed(1);
+        accelValue.textContent = tugBox.a.toFixed(2);
+        velValue.textContent = Math.abs(tugBox.v).toFixed(2);
+        
+        if(speedBar) speedBar.style.width = Math.min(100, (Math.abs(tugBox.v) / 20) * 100) + '%';
+        
+        if (netForce > 0) updateStatusMessage("Benda Tertarik ke Kanan!");
+        else if (netForce < 0) updateStatusMessage("Benda Tertarik ke Kiri!");
+        else updateStatusMessage("Seimbang! (Resultan = 0)");
     }
 
     elapsedTime += dt;
@@ -297,6 +354,50 @@ function drawCarObj(x, y) {
     ctx.restore();
 }
 
+function drawSportsCar(x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    // Tires
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.arc(-25, 0, 10, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(25, 0, 10, 0, Math.PI*2); ctx.fill();
+    // Body (Sleek red)
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(-40, -10);
+    ctx.lineTo(40, -10);
+    ctx.lineTo(30, -25);
+    ctx.lineTo(-20, -25);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawTruckObj(x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    // Tires
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.arc(-40, 0, 12, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(40, 0, 12, 0, Math.PI*2); ctx.fill();
+    // Cabin
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(20, -50, 30, 40);
+    // Cargo
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-50, -60, 70, 50);
+    ctx.restore();
+}
+
+function drawTugBox(x, y) {
+    ctx.fillStyle = '#8b5cf6';
+    ctx.fillRect(x - 30, y - 60, 60, 60);
+    ctx.fillStyle = 'white';
+    ctx.font = '20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText("50kg", x, y - 25);
+}
+
 function drawScene() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const groundY = canvas.height - 50;
@@ -352,6 +453,52 @@ function drawScene() {
             // Draw inertia arrow
             drawArrow(pixelXBox, groundY - 120, 50, 'positive', '#ef4444', 'Inersia');
         }
+    } else if (currentScenario === 'race') {
+        // Draw track lines
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(0, groundY - 80, canvas.width, 2);
+        
+        const pCarX = canvas.width/4 - 100 + (carRace.x * SCALE);
+        const pTruckX = canvas.width/4 - 100 + (truckRace.x * SCALE);
+        
+        drawSportsCar(pCarX, groundY - 15);
+        drawTruckObj(pTruckX, groundY - 95);
+        
+        // Draw Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.life -= 0.05;
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            } else {
+                ctx.fillStyle = `rgba(200, 200, 200, ${p.life})`;
+                ctx.beginPath(); ctx.arc(canvas.width/4 - 100 + p.x, groundY - 5, 8, 0, Math.PI*2); ctx.fill();
+            }
+        }
+    } else if (currentScenario === 'tugofwar') {
+        const pBoxX = canvas.width/2 + (tugBox.x * SCALE);
+        drawTugBox(pBoxX, groundY);
+        
+        const leftF = parseFloat(tugLeftForce.value) || 0;
+        const rightF = parseFloat(tugRightForce.value) || 0;
+        
+        drawPersonPushing(pBoxX - 80, groundY); // Kiri
+        drawPersonPushing(pBoxX + 80, groundY); // Kanan
+        
+        // Tali
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(pBoxX - 70, groundY - 40); ctx.lineTo(pBoxX - 30, groundY - 40); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pBoxX + 30, groundY - 40); ctx.lineTo(pBoxX + 70, groundY - 40); ctx.stroke();
+        
+        drawArrow(pBoxX - 60, groundY - 80, leftF * 0.3, 'negative', '#ef4444', `${leftF}N`);
+        drawArrow(pBoxX + 60, groundY - 80, rightF * 0.3, 'positive', '#3b82f6', `${rightF}N`);
+        
+        let netForce = rightF - leftF;
+        if (netForce !== 0) {
+            drawArrow(pBoxX, groundY - 120, Math.abs(netForce) * 0.3, netForce > 0 ? 'positive' : 'negative', '#10b981', `ΣF=${Math.abs(netForce)}N`);
+        }
     }
 
     if (isPlaying) {
@@ -380,6 +527,12 @@ function resetSim() {
     car.x = 0; car.braking = false;
     car.v = parseFloat(carSpeed.value) || 15;
     boxOnCar.x = 0; boxOnCar.v = car.v; boxOnCar.a = 0;
+    
+    carRace.x = 0; carRace.v = 0; carRace.a = 0;
+    truckRace.x = 0; truckRace.v = 0; truckRace.a = 0;
+    tugBox.x = 0; tugBox.v = 0; tugBox.a = 0;
+    particles = [];
+    if(speedBar) speedBar.style.width = '0%';
 
     velValue.textContent = '0.00';
     netForceValue.textContent = '0';
@@ -409,6 +562,8 @@ scenarioSelect.addEventListener('change', (e) => {
     trolleyControls.style.display = currentScenario === 'trolley' ? 'block' : 'none';
     rocketControls.style.display = currentScenario === 'rocket' ? 'block' : 'none';
     brakingControls.style.display = currentScenario === 'braking' ? 'block' : 'none';
+    raceControls.style.display = currentScenario === 'race' ? 'block' : 'none';
+    tugOfWarControls.style.display = currentScenario === 'tugofwar' ? 'block' : 'none';
     
     resetSim();
 });
@@ -422,7 +577,7 @@ btnBrake.addEventListener('click', () => {
     if(!isPlaying) btnPlayPause.click();
 });
 
-[trolleyMassSelect, trolleyForce, rocketThrust, carSpeed].forEach(el => {
+[trolleyMassSelect, trolleyForce, rocketThrust, carSpeed, raceForce, tugLeftForce, tugRightForce].forEach(el => {
     el.addEventListener('input', () => { if (!isPlaying) resetSim(); });
 });
 
