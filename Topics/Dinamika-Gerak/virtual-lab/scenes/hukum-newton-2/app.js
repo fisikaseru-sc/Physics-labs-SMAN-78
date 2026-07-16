@@ -98,9 +98,12 @@ function drawArrow(x, y, length, direction, color, label, isVertical = false) {
 
 function drawTrolley(x, y, angle, isFull) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
-    ctx.fillStyle = '#334155';
+    ctx.fillStyle = '#1e293b'; // Very dark tire
     ctx.beginPath(); ctx.arc(-30, 20, 10, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(30, 20, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; // White hub
+    ctx.beginPath(); ctx.arc(-30, 20, 4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(30, 20, 4, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(-40, 10); ctx.lineTo(40, 10); ctx.lineTo(50, -40); ctx.lineTo(-50, -40); ctx.closePath(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-50, -40); ctx.lineTo(-65, -60); ctx.stroke();
@@ -140,6 +143,9 @@ function drawCarObj(x, y, angle) {
     ctx.fillStyle = '#1e293b';
     ctx.beginPath(); ctx.arc(-40, 15, 15, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(40, 15, 15, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(-40, 15, 6, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(40, 15, 6, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.roundRect(-70, -15, 140, 30, 5); ctx.fill();
     ctx.fillStyle = '#93c5fd'; ctx.beginPath(); ctx.roundRect(-30, -45, 60, 30, 5); ctx.fill();
     ctx.restore();
@@ -160,6 +166,10 @@ function drawTruckObj(x, y, angle) {
     ctx.beginPath(); ctx.arc(-40, 15, 12, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(0, 15, 12, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(40, 15, 12, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(-40, 15, 5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 15, 5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(40, 15, 5, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = '#f59e0b'; ctx.fillRect(20, -35, 30, 40);
     ctx.fillStyle = '#64748b'; ctx.fillRect(-50, -45, 70, 50);
     ctx.restore();
@@ -329,9 +339,18 @@ function drawScene() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const groundY = canvas.height - 50;
     
-    // Draw Ground
-    ctx.fillStyle = '#475569';
+    // Draw Sky Background
+    let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGradient.addColorStop(0, '#bae6fd');
+    skyGradient.addColorStop(1, '#f0f9ff');
+    ctx.fillStyle = skyGradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw Ground (Grass + Asphalt Line)
+    ctx.fillStyle = '#4ade80';
     ctx.fillRect(0, groundY, canvas.width, 50);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(0, groundY, canvas.width, 10);
 
     if (currentScenario === 'trolley' && activeBodies.trolley) {
         const t = activeBodies.trolley;
@@ -382,8 +401,8 @@ function drawScene() {
             p.x += p.vx; p.life -= 0.05;
             if (p.life <= 0) particles.splice(i, 1);
             else {
-                ctx.fillStyle = `rgba(200, 200, 200, ${p.life})`;
-                ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 8 + (1-p.life)*15, 0, Math.PI*2); ctx.fill();
             }
         }
     } 
@@ -397,7 +416,7 @@ function drawScene() {
         drawPersonPushing(b.position.x - 100, groundY);
         drawPersonPushing(b.position.x + 100, groundY);
         
-        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3;
+        ctx.strokeStyle = '#78350f'; ctx.lineWidth = 6; // Thick Rope
         ctx.beginPath(); ctx.moveTo(b.position.x - 90, groundY - 40); ctx.lineTo(b.position.x - 30, b.position.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(b.position.x + 30, b.position.y); ctx.lineTo(b.position.x + 90, groundY - 40); ctx.stroke();
         
