@@ -339,18 +339,42 @@ function drawScene() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const groundY = canvas.height - 50;
     
-    // Draw Sky Background
-    let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    skyGradient.addColorStop(0, '#bae6fd');
-    skyGradient.addColorStop(1, '#f0f9ff');
-    ctx.fillStyle = skyGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw Ground (Grass + Asphalt Line)
-    ctx.fillStyle = '#4ade80';
-    ctx.fillRect(0, groundY, canvas.width, 50);
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(0, groundY, canvas.width, 10);
+    // Conditionally Draw Background (Indoor vs Outdoor)
+    if (currentScenario === 'trolley') {
+        // INDOOR CLASSROOM / SUPERMARKET
+        // Wall
+        ctx.fillStyle = '#fef3c7'; // Warm Yellowish White Wall
+        ctx.fillRect(0, 0, canvas.width, groundY);
+        // Baseboard (List Dinding)
+        ctx.fillStyle = '#d97706'; // Wood color
+        ctx.fillRect(0, groundY - 15, canvas.width, 15);
+        // Floor (Ceramic Tiles)
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, groundY, canvas.width, 50);
+        // Tile lines
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2;
+        for(let i = 0; i < canvas.width; i+=100) {
+            ctx.beginPath(); ctx.moveTo(i, groundY); ctx.lineTo(i - 20, canvas.height); ctx.stroke();
+        }
+    } else {
+        // OUTDOOR
+        // Sky Background
+        let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        skyGradient.addColorStop(0, '#bae6fd');
+        skyGradient.addColorStop(1, '#f0f9ff');
+        ctx.fillStyle = skyGradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Ground (Grass + Asphalt Line)
+        ctx.fillStyle = '#4ade80'; // Grass
+        ctx.fillRect(0, groundY, canvas.width, 50);
+        
+        if (currentScenario !== 'tugofwar') {
+            // Asphalt for vehicles
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(0, groundY, canvas.width, 12);
+        }
+    }
 
     if (currentScenario === 'trolley' && activeBodies.trolley) {
         const t = activeBodies.trolley;
