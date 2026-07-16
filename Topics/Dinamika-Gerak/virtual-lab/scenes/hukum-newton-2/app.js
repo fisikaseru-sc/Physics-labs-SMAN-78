@@ -299,7 +299,7 @@ function updatePhysics(dt) {
             Body.applyForce(activeBodies.rocket, activeBodies.rocket.position, { x: 0, y: -thrust * 0.0001 });
         }
         
-        const weight = activeBodies.rocket.mass * 10;
+        const weight = activeBodies.rocket.mass * 9.8; // Menggunakan g = 9.8
         let netForce = thrust > 0 ? (thrust - weight) : (activeBodies.rocket.position.y < canvas.height - 100 ? -weight : 0);
         let a = netForce / activeBodies.rocket.mass;
         let v = -activeBodies.rocket.velocity.y * 2;
@@ -307,7 +307,13 @@ function updatePhysics(dt) {
         netForceValue.textContent = Math.abs(netForce).toFixed(1);
         accelValue.textContent = a.toFixed(2);
         velValue.textContent = v.toFixed(2);
-        updateStatusMessage(a > 0 ? "Roket Meluncur Naik!" : (v < 0 ? "Roket Jatuh" : "Roket di Landasan"));
+        
+        const isOnGround = activeBodies.rocket.position.y >= groundY - 73;
+        let msg = "";
+        if (a > 0) msg = "🚀 Roket Meluncur Naik!";
+        else if (isOnGround) msg = "⏳ Roket di Landasan";
+        else msg = "💥 Roket Jatuh";
+        updateStatusMessage(msg);
     }
     else if (currentScenario === 'braking' && activeBodies.car) {
         if (activeBodies.braking) {
@@ -362,7 +368,13 @@ function updatePhysics(dt) {
         checkStop(activeBodies.car, activeBodies.car.position.x > canvas.width - 50, "🏁 Balapan Selesai: Mobil Sport menang!");
         if (isPlaying) checkStop(activeBodies.truck, activeBodies.truck.position.x > canvas.width - 50, "🏁 Balapan Selesai: Truk menang!");
     } else if (currentScenario === 'rocket') {
-        checkStop(activeBodies.rocket, activeBodies.rocket.position.y < -50, "🚀 Simulasi Selesai: Roket meluncur ke angkasa!");
+        checkStop(activeBodies.rocket, activeBodies.rocket.position.y < -50, "🚀 Simulasi Selesai: Roket berhasil meluncur ke angkasa!");
+        
+        // Logika validasi roket gagal meluncur jika di landasan > 3 detik
+        const isOnGround = activeBodies.rocket.position.y >= groundY - 73;
+        if (isOnGround && elapsedTime > 3) {
+            checkStop(activeBodies.rocket, true, "💥 Simulasi Selesai: Roket gagal meluncur (Gaya Dorong < Berat)");
+        }
     }
     
     timeValue.textContent = elapsedTime.toFixed(2);
@@ -428,7 +440,7 @@ function drawScene() {
                 drawArrow(r.position.x - 40, r.position.y + 40, thrust * 0.1, 'negative', '#ef4444', `${thrust}N (Aksi)`, true);
                 drawArrow(r.position.x + 40, r.position.y - 40, thrust * 0.1, 'positive', '#3b82f6', `${thrust}N (Reaksi)`, true);
             }
-            drawArrow(r.position.x, r.position.y, 1000 * 0.1, 'negative', '#10b981', `Berat: 1000N`, true);
+            drawArrow(r.position.x, r.position.y, 980 * 0.1, 'negative', '#10b981', `Berat: 980N`, true);
         }
     } 
     else if (currentScenario === 'braking' && activeBodies.car) {
@@ -500,7 +512,7 @@ function resetSim() {
     netForceValue.textContent = '0';
     accelValue.textContent = '0.00';
     timeValue.textContent = '0.00';
-    updateStatusMessage("Siap (Coba seret objek dengan jari/mouse!)");
+    updateStatusMessage("Siap");
     
     drawScene();
 }
