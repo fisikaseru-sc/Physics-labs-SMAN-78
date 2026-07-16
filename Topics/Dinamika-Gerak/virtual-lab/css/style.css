@@ -346,19 +346,21 @@ main {
 
 .instruction-box {
     margin-top: 10px;
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: #10b981; /* Full green background */
+    border: 1px solid #059669;
     padding: 12px 15px;
     border-radius: 10px;
-    font-size: 0.8rem;
-    line-height: 1.4;
-    color: #a7f3d0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #ffffff; /* White text for contrast */
+    box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
 }
 
 .instruction-box strong {
-    color: var(--accent-green);
+    color: #fde047; /* Yellow text for the title to pop */
     display: block;
     margin-bottom: 5px;
+    font-size: 0.95rem;
 }
 
 /* Responsive */
