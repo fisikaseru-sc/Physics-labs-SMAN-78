@@ -299,8 +299,9 @@ function buildScenario() {
     else if (currentScenario === 'race') {
         engine.gravity.y = 0; // Top-Down view (no vertical gravity)
         
+        const tMass = parseFloat(document.getElementById('truckMass')?.value) || 5000;
         activeBodies.car = Bodies.rectangle(canvas.width/4 - 100, canvas.height/2 + 50, 80, 30, { mass: 1000, frictionAir: 0.05, restitution: 0 });
-        activeBodies.truck = Bodies.rectangle(canvas.width/4 - 100, canvas.height/2 - 50, 120, 40, { mass: 5000, frictionAir: 0.05, restitution: 0 });
+        activeBodies.truck = Bodies.rectangle(canvas.width/4 - 100, canvas.height/2 - 50, 120, 40, { mass: tMass, frictionAir: 0.05, restitution: 0 });
         World.add(world, [activeBodies.car, activeBodies.truck]);
     }
     
@@ -364,7 +365,7 @@ function updatePhysics(dt) {
         
         let msg = "";
         if (a > 0) msg = "🚀 Roket Meluncur Naik!";
-        else if (isOnGround) msg = activeBodies.launchInitiated ? "⏳ Mesin menyala, roket belum terangkat" : "⏳ Roket di Landasan";
+        else if (isOnGround) msg = activeBodies.launchInitiated ? "⏳ Mesin menyala, gaya dorong tidak cukup" : "⏳ Roket di Landasan";
         else msg = "💥 Roket Jatuh";
         updateStatusMessage(msg);
     }
@@ -390,10 +391,6 @@ function updatePhysics(dt) {
         const force = parseFloat(raceForce.value) || 0;
         Body.applyForce(activeBodies.car, activeBodies.car.position, { x: force * 0.00005, y: 0 });
         Body.applyForce(activeBodies.truck, activeBodies.truck.position, { x: force * 0.00005, y: 0 });
-        
-        if (force > 0 && Math.random() > 0.5) {
-            particles.push({x: activeBodies.car.position.x - 40, y: activeBodies.car.position.y + 10, vx: -Math.random()*5, life: 1});
-        }
         
         const a_car = force / activeBodies.car.mass;
         const a_truck = force / activeBodies.truck.mass;
@@ -423,8 +420,10 @@ function updatePhysics(dt) {
     } else if (currentScenario === 'rocket') {
         checkStop(activeBodies.rocket, activeBodies.rocket.position.y < -50, "🚀 Simulasi Selesai: Roket berhasil meluncur ke angkasa!");
         
-        // Logika validasi roket gagal meluncur jika di landasan > 3 detik setelah dinyalakan
-        if (activeBodies.rocketLaunchTime > 3) {
+        // Logika validasi roket gagal meluncur jika di landasan > 3 detik setelah dinyalakan dan a <= 0
+        const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
+        const weight = activeBodies.rocket.mass * 9.8;
+        if (activeBodies.rocketLaunchTime > 3 && thrust <= weight) {
             checkStop(activeBodies.rocket, true, "💥 Simulasi Selesai: Roket gagal meluncur (Gaya Dorong < Berat)");
         }
     }
@@ -604,7 +603,16 @@ function resetSim() {
     velValue.textContent = '0.00';
     netForceValue.textContent = '0';
     accelValue.textContent = '0.00';
-    timeValue.textContent = '0.00';
+    // Tampilkan overlayStats hanya untuk Troli dan Roket saat awal load/reset
+    const overlayStats = document.getElementById('overlayStats');
+    if (overlayStats) {
+        if (currentScenario === 'trolley' || currentScenario === 'rocket') {
+            overlayStats.style.display = 'grid'; 
+        } else {
+            overlayStats.style.display = 'none';
+        }
+    }
+    
     updateStatusMessage("Siap");
     if (currentScenario === 'rocket') btnLaunch.textContent = "🚀 LUNCURKAN!";
     
@@ -626,11 +634,28 @@ btnPlayPause.addEventListener('click', () => {
 btnReset.addEventListener('click', resetSim);
 
 scenarioSelect.addEventListener('change', (e) => {
-    currentScenario = e.target.value;
-    trolleyControls.style.display = currentScenario === 'trolley' ? 'block' : 'none';
-    rocketControls.style.display = currentScenario === 'rocket' ? 'block' : 'none';
-    brakingControls.style.display = currentScenario === 'braking' ? 'block' : 'none';
-    raceControls.style.display = currentScenario === 'race' ? 'block' : 'none';
+    const sc = e.target.value;
+    currentScenario = sc;
+    trolleyControls.style.display = 'none';
+    raceControls.style.display = 'none';
+    rocketControls.style.display = 'none';
+    brakingControls.style.display = 'none';
+    
+    if(sc === 'trolley') trolleyControls.style.display = 'block';
+    else if(sc === 'race') raceControls.style.display = 'block';
+    else if(sc === 'rocket') rocketControls.style.display = 'block';
+    else if(sc === 'braking') brakingControls.style.display = 'block';
+    
+    // Tampilkan overlayStats hanya untuk Troli dan Roket
+    const overlayStats = document.getElementById('overlayStats');
+    if (overlayStats) {
+        if (sc === 'trolley' || sc === 'rocket') {
+            overlayStats.style.display = 'grid'; // Grid is used in CSS for .overlay-stats
+        } else {
+            overlayStats.style.display = 'none';
+        }
+    }
+    
     resetSim();
 });
 

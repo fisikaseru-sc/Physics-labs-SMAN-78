@@ -34,7 +34,7 @@
         <main>
             <!-- LEFT: SIMULATION -->
             <div class="simulation-area">
-                <div class="overlay-stats">
+                <div id="overlayStats" class="overlay-stats">
                     <div class="stat-box">
                         <span class="label">Resultan Gaya (ΣF)</span>
                         <div><span class="value" id="netForceValue">0</span> <span class="unit">N</span></div>
@@ -95,7 +95,13 @@
                 <!-- KONTROL BALAPAN (RACE) -->
                 <div id="raceControls" class="scenario-controls mt-10" style="display: none;">
                     <div class="info-text mb-10" style="display:block;">Bandingkan percepatan dua kendaraan dengan gaya
-                        mesin yang sama. Mobil Sport (1.000 kg) vs Truk (5.000 kg).</div>
+                        mesin yang sama. Mobil Sport (1.000 kg).</div>
+                    <div class="control-group mt-10">
+                        <label>Massa Truk (kg)</label>
+                        <div class="input-row">
+                            <input type="number" id="truckMass" min="1000" value="5000" step="500" class="number-input">
+                        </div>
+                    </div>
                     <div class="control-group mt-10">
                         <label>Gaya Mesin (N)</label>
                         <div class="input-row">
