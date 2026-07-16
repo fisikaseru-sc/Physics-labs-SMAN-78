@@ -1,10 +1,31 @@
+// --- INIT MATTER.JS ---
+const Engine = Matter.Engine,
+      World = Matter.World,
+      Bodies = Matter.Bodies,
+      Body = Matter.Body,
+      Composite = Matter.Composite,
+      Events = Matter.Events,
+      Mouse = Matter.Mouse,
+      MouseConstraint = Matter.MouseConstraint;
+
+const engine = Engine.create();
+const world = engine.world;
+engine.gravity.y = 1; // 1 scale gravity
+
 const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
+
+// --- MOUSE INTERACTION ---
+const mouse = Mouse.create(canvas);
+const mouseConstraint = MouseConstraint.create(engine, {
+    mouse: mouse,
+    constraint: { stiffness: 0.2, render: { visible: false } }
+});
+World.add(world, mouseConstraint);
 
 // UI Elements
 const btnPlayPause = document.getElementById('btnPlayPause');
 const btnReset = document.getElementById('btnReset');
-
 const scenarioSelect = document.getElementById('scenarioSelect');
 
 const trolleyControls = document.getElementById('trolleyControls');
@@ -27,62 +48,39 @@ const tugLeftForce = document.getElementById('tugLeftForce');
 const tugRightForce = document.getElementById('tugRightForce');
 
 const speedBar = document.getElementById('speedBar');
-
 const velValue = document.getElementById('velValue');
 const netForceValue = document.getElementById('netForceValue');
 const accelValue = document.getElementById('accelValue');
 const timeValue = document.getElementById('timeValue');
 const statusMessage = document.getElementById('statusMessage');
 
-// State
 let isPlaying = false;
 let lastTime = 0;
 let elapsedTime = 0;
-
 let currentScenario = 'trolley';
-const GRAVITY = 10;
-const SCALE = 50; // pixels per meter
-
-// Objects
-const trolley = { x: 0, y: 0, v: 0, a: 0, mass: 10 };
-const rocket = { y: 0, v: 0, a: 0, mass: 100, thrusting: false };
-const car = { x: 0, v: 0, braking: false };
-const boxOnCar = { x: 0, v: 0, a: 0, mass: 50 };
-
-const carRace = { x: 0, v: 0, a: 0, mass: 1000 };
-const truckRace = { x: 0, v: 0, a: 0, mass: 5000 };
-const tugBox = { x: 0, v: 0, a: 0, mass: 50 };
 let particles = [];
+let activeBodies = {}; // Store references to Matter bodies
 
 function resizeCanvas() {
     const container = canvas.parentElement;
     canvas.width = container.clientWidth;
     canvas.height = container.clientHeight;
+    buildScenario(); // Rebuild world on resize
 }
 window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
 
+// --- DRAWING FUNCTIONS (CUSTOM CANVAS) ---
 function drawArrow(x, y, length, direction, color, label, isVertical = false) {
-    if (length === 0) return;
-    
+    if (Math.abs(length) < 5) return;
     const arrowWidth = 8;
     const arrowHeadSize = 12;
     const actualLength = Math.max(20, Math.abs(length));
     const sign = direction === 'positive' ? 1 : -1;
-    
     ctx.beginPath();
     ctx.moveTo(x, y);
-    
-    if (isVertical) {
-        ctx.lineTo(x, y - sign * Math.max(1, actualLength - arrowHeadSize));
-    } else {
-        ctx.lineTo(x + sign * Math.max(1, actualLength - arrowHeadSize), y);
-    }
-    
-    ctx.lineWidth = arrowWidth;
-    ctx.strokeStyle = color;
-    ctx.stroke();
-    
+    if (isVertical) ctx.lineTo(x, y - sign * Math.max(1, actualLength - arrowHeadSize));
+    else ctx.lineTo(x + sign * Math.max(1, actualLength - arrowHeadSize), y);
+    ctx.lineWidth = arrowWidth; ctx.strokeStyle = color; ctx.stroke();
     ctx.beginPath();
     if (isVertical) {
         ctx.moveTo(x - arrowHeadSize/2, y - sign * Math.max(1, actualLength - arrowHeadSize));
@@ -93,309 +91,241 @@ function drawArrow(x, y, length, direction, color, label, isVertical = false) {
         ctx.lineTo(x + sign * actualLength, y);
         ctx.lineTo(x + sign * Math.max(1, actualLength - arrowHeadSize), y + arrowHeadSize/2);
     }
-    
-    ctx.fillStyle = color;
-    ctx.fill();
-    
-    ctx.fillStyle = color;
-    ctx.font = '14px Inter, sans-serif';
-    ctx.fontWeight = 'bold';
-    ctx.textAlign = 'center';
-    
-    if (isVertical) {
-        ctx.fillText(label, x + 35, y - sign * (actualLength / 2));
-    } else {
-        ctx.fillText(label, x + sign * (actualLength / 2), y - arrowHeadSize - 5);
-    }
+    ctx.fillStyle = color; ctx.fill();
+    ctx.font = '14px Inter, sans-serif'; ctx.fontWeight = 'bold'; ctx.textAlign = 'center';
+    if (isVertical) ctx.fillText(label, x + 35, y - sign * (actualLength / 2));
+    else ctx.fillText(label, x + sign * (actualLength / 2), y - arrowHeadSize - 5);
 }
 
-function updatePhysics(dt) {
-    if (!isPlaying) return;
+function drawTrolley(x, y, angle, isFull) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+    ctx.fillStyle = '#334155';
+    ctx.beginPath(); ctx.arc(-30, 20, 10, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(30, 20, 10, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(-40, 10); ctx.lineTo(40, 10); ctx.lineTo(50, -40); ctx.lineTo(-50, -40); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-50, -40); ctx.lineTo(-65, -60); ctx.stroke();
+    if (isFull) {
+        ctx.fillStyle = '#ef4444'; ctx.fillRect(-35, -35, 30, 40);
+        ctx.fillStyle = '#3b82f6'; ctx.fillRect(0, -25, 30, 30);
+        ctx.fillStyle = '#10b981'; ctx.fillRect(-10, -30, 20, 35);
+    }
+    ctx.restore();
+}
+
+function drawPersonPushing(x, y) {
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(x, y - 80, 15, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 65); ctx.lineTo(x + 10, y - 30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 10, y - 30); ctx.lineTo(x - 10, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 10, y - 30); ctx.lineTo(x + 25, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 5, y - 55); ctx.lineTo(x + 35, y - 50); ctx.stroke();
+}
+
+function drawRocketObj(x, y, angle, thrusting) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+    ctx.fillStyle = '#cbd5e1'; ctx.fillRect(-20, -40, 40, 80);
+    ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.moveTo(-20, -40); ctx.lineTo(0, -80); ctx.lineTo(20, -40); ctx.fill();
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath(); ctx.moveTo(-20, 20); ctx.lineTo(-40, 40); ctx.lineTo(-20, 40); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(20, 20); ctx.lineTo(40, 40); ctx.lineTo(20, 40); ctx.fill();
+    if (thrusting) {
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath(); ctx.moveTo(-15, 40); ctx.lineTo(0, 80 + Math.random()*20); ctx.lineTo(15, 40); ctx.fill();
+    }
+    ctx.restore();
+}
+
+function drawCarObj(x, y, angle) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.arc(-40, 15, 15, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(40, 15, 15, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#3b82f6'; ctx.beginPath(); ctx.roundRect(-70, -15, 140, 30, 5); ctx.fill();
+    ctx.fillStyle = '#93c5fd'; ctx.beginPath(); ctx.roundRect(-30, -45, 60, 30, 5); ctx.fill();
+    ctx.restore();
+}
+
+function drawSportsCar(x, y, angle) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.arc(-25, 10, 10, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(25, 10, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(40, 0); ctx.lineTo(30, -15); ctx.lineTo(-20, -15); ctx.fill();
+    ctx.restore();
+}
+
+function drawTruckObj(x, y, angle) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.arc(-40, 15, 12, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 15, 12, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(40, 15, 12, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#f59e0b'; ctx.fillRect(20, -35, 30, 40);
+    ctx.fillStyle = '#64748b'; ctx.fillRect(-50, -45, 70, 50);
+    ctx.restore();
+}
+
+function drawTugBox(x, y, angle) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+    ctx.fillStyle = '#8b5cf6'; ctx.fillRect(-30, -30, 60, 60);
+    ctx.fillStyle = 'white'; ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.fillText("50kg", 0, 5);
+    ctx.restore();
+}
+
+// --- MATTER.JS SCENARIO BUILDERS ---
+function buildScenario() {
+    World.clear(world);
+    Engine.clear(engine);
+    activeBodies = {};
+    const groundY = canvas.height - 50;
+    
+    // Add ground and walls
+    const ground = Bodies.rectangle(canvas.width/2, groundY + 25, canvas.width*3, 50, { isStatic: true });
+    World.add(world, ground);
 
     if (currentScenario === 'trolley') {
-        const force = parseFloat(trolleyForce.value) || 0;
-        trolley.mass = parseFloat(trolleyMassSelect.value) || 10;
-        
-        trolley.a = force / trolley.mass;
-        trolley.v += trolley.a * dt;
-        trolley.x += trolley.v * dt;
-        
-        netForceValue.textContent = force.toFixed(1);
-        accelValue.textContent = trolley.a.toFixed(2);
-        velValue.textContent = trolley.v.toFixed(2);
-        updateStatusMessage(force > 0 ? `Troli dipercepat (a = ${trolley.a.toFixed(2)} m/s²)` : "Troli Diam");
-
-    } else if (currentScenario === 'rocket') {
-        const thrust = rocket.thrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
-        const weight = rocket.mass * GRAVITY; // 1000 N
-        
-        let netForce = thrust > 0 ? (thrust - weight) : (rocket.y > 0 ? -weight : 0);
-        
-        // Prevent falling through ground
-        if (rocket.y <= 0 && netForce < 0) {
-            netForce = 0;
-            rocket.v = 0;
-            rocket.y = 0;
-        }
-
-        rocket.a = netForce / rocket.mass;
-        rocket.v += rocket.a * dt;
-        rocket.y += rocket.v * dt;
-
-        if (rocket.y < 0) {
-            rocket.y = 0;
-            rocket.v = 0;
-            rocket.a = 0;
-        }
-
-        netForceValue.textContent = Math.abs(netForce).toFixed(1);
-        accelValue.textContent = rocket.a.toFixed(2);
-        velValue.textContent = rocket.v.toFixed(2);
-        updateStatusMessage(rocket.a > 0 ? "Roket Meluncur Naik!" : (rocket.y > 0 ? "Roket Jatuh" : "Roket di Landasan"));
-
-    } else if (currentScenario === 'braking') {
-        // Car logic
-        if (car.braking) {
-            car.v -= 40 * dt; // High deceleration
-            if (car.v < 0) car.v = 0;
-        }
-        car.x += car.v * dt;
-
-        // Box logic (friction from car roof)
-        // If box is moving faster than car, friction slows it down relative to ground
-        let frictionForce = 0;
-        const mu = 0.2;
-        const maxFriction = mu * boxOnCar.mass * GRAVITY; // 0.2 * 50 * 10 = 100 N
-        
-        if (boxOnCar.v > car.v) {
-            frictionForce = -maxFriction;
-        } else if (boxOnCar.v < car.v) {
-            frictionForce = maxFriction;
-        }
-        
-        boxOnCar.a = frictionForce / boxOnCar.mass;
-        boxOnCar.v += boxOnCar.a * dt;
-        boxOnCar.x += boxOnCar.v * dt;
-
-        // Cap to car speed if it catches up
-        if (!car.braking) {
-             boxOnCar.v = car.v;
-             boxOnCar.x = car.x;
-             boxOnCar.a = 0;
-        }
-
-        netForceValue.textContent = Math.abs(frictionForce).toFixed(1);
-        accelValue.textContent = boxOnCar.a.toFixed(2);
-        velValue.textContent = boxOnCar.v.toFixed(2);
-        updateStatusMessage(car.braking ? "Mobil Direm! Kotak terdorong ke depan karena Inersia." : "Mobil Melaju Konstan");
-    } else if (currentScenario === 'race') {
-        const force = parseFloat(raceForce.value) || 0;
-        
-        carRace.a = force / carRace.mass;
-        truckRace.a = force / truckRace.mass;
-        
-        carRace.v += carRace.a * dt;
-        truckRace.v += truckRace.a * dt;
-        
-        carRace.x += carRace.v * dt;
-        truckRace.x += truckRace.v * dt;
-        
-        if (force > 0 && Math.random() > 0.5) {
-            particles.push({x: carRace.x * SCALE - 50, y: 0, vx: -Math.random()*20, life: 1});
-        }
-        
-        netForceValue.textContent = force.toFixed(1);
-        accelValue.textContent = carRace.a.toFixed(2) + " (Mobil)";
-        velValue.textContent = carRace.v.toFixed(2);
-        
-        let maxSpeed = 50; 
-        if(speedBar) speedBar.style.width = Math.min(100, (carRace.v / maxSpeed) * 100) + '%';
-        
-        updateStatusMessage(`Mobil sport jauh lebih cepat! a(mobil)=${carRace.a.toFixed(2)} vs a(truk)=${truckRace.a.toFixed(2)}`);
-        
-    } else if (currentScenario === 'tugofwar') {
-        const leftF = parseFloat(tugLeftForce.value) || 0;
-        const rightF = parseFloat(tugRightForce.value) || 0;
-        
-        const netForce = rightF - leftF;
-        tugBox.a = netForce / tugBox.mass;
-        tugBox.v += tugBox.a * dt;
-        tugBox.x += tugBox.v * dt;
-        
-        netForceValue.textContent = netForce.toFixed(1);
-        accelValue.textContent = tugBox.a.toFixed(2);
-        velValue.textContent = Math.abs(tugBox.v).toFixed(2);
-        
-        if(speedBar) speedBar.style.width = Math.min(100, (Math.abs(tugBox.v) / 20) * 100) + '%';
-        
-        if (netForce > 0) updateStatusMessage("Benda Tertarik ke Kanan!");
-        else if (netForce < 0) updateStatusMessage("Benda Tertarik ke Kiri!");
-        else updateStatusMessage("Seimbang! (Resultan = 0)");
+        const mass = parseFloat(trolleyMassSelect.value) || 10;
+        activeBodies.trolley = Bodies.rectangle(canvas.width/2 - 100, groundY - 50, 100, 80, { mass: mass, friction: 0.05, restitution: 0.2 });
+        World.add(world, activeBodies.trolley);
+    } 
+    else if (currentScenario === 'rocket') {
+        engine.gravity.y = 1; // Earth gravity
+        activeBodies.rocket = Bodies.rectangle(canvas.width/2, groundY - 60, 40, 120, { mass: 100, frictionAir: 0.02, friction: 0.5 });
+        World.add(world, activeBodies.rocket);
+        activeBodies.isThrusting = false;
     }
-
-    elapsedTime += dt;
-    timeValue.textContent = elapsedTime.toFixed(2);
+    else if (currentScenario === 'braking') {
+        activeBodies.car = Bodies.rectangle(canvas.width/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.01 });
+        activeBodies.box = Bodies.rectangle(canvas.width/2 - 150, groundY - 75, 40, 30, { mass: 50, friction: 0.3 }); // Mu=0.3
+        
+        let startSpeed = parseFloat(carSpeed.value) || 15;
+        // Need to scale speed to Matter.js units (~0.1 of actual meter/s)
+        Body.setVelocity(activeBodies.car, { x: startSpeed * 0.5, y: 0 });
+        Body.setVelocity(activeBodies.box, { x: startSpeed * 0.5, y: 0 });
+        
+        World.add(world, [activeBodies.car, activeBodies.box]);
+        activeBodies.braking = false;
+    }
+    else if (currentScenario === 'race') {
+        // Track 1 (Truck)
+        World.add(world, Bodies.rectangle(canvas.width/2, groundY - 80, canvas.width*3, 20, { isStatic: true }));
+        
+        activeBodies.car = Bodies.rectangle(canvas.width/4 - 100, groundY - 20, 80, 30, { mass: 1000, friction: 0.05 });
+        activeBodies.truck = Bodies.rectangle(canvas.width/4 - 100, groundY - 110, 120, 60, { mass: 5000, friction: 0.05 });
+        World.add(world, [activeBodies.car, activeBodies.truck]);
+    }
+    else if (currentScenario === 'tugofwar') {
+        engine.gravity.y = 0; // Top-down view or just ignoring gravity for pull
+        activeBodies.box = Bodies.rectangle(canvas.width/2, groundY - 30, 60, 60, { mass: 50, frictionAir: 0.05 });
+        World.add(world, activeBodies.box);
+    }
+    
+    elapsedTime = 0;
+    particles = [];
 }
 
+// --- UPDATE & DRAW ---
 function updateStatusMessage(msg) {
     statusMessage.textContent = msg;
     statusMessage.style.backgroundColor = "rgba(0,0,0,0.8)";
 }
 
-function drawTrolley(x, y, isFull) {
-    ctx.save();
-    ctx.translate(x, y);
+function updatePhysics(dt) {
+    if (!isPlaying) return;
     
-    // Wheels
-    ctx.fillStyle = '#334155';
-    ctx.beginPath(); ctx.arc(-30, 0, 10, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(30, 0, 10, 0, Math.PI*2); ctx.fill();
-    
-    // Basket
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(-40, -10);
-    ctx.lineTo(40, -10);
-    ctx.lineTo(50, -60);
-    ctx.lineTo(-50, -60);
-    ctx.closePath();
-    ctx.stroke();
+    // Convert dt (seconds) to milliseconds for Matter.js
+    Engine.update(engine, dt * 1000);
+    elapsedTime += dt;
 
-    // Handle
-    ctx.beginPath();
-    ctx.moveTo(-50, -60);
-    ctx.lineTo(-65, -80);
-    ctx.stroke();
-
-    if (isFull) {
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(-35, -55, 30, 40);
-        ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(0, -45, 30, 30);
-        ctx.fillStyle = '#10b981';
-        ctx.fillRect(-10, -50, 20, 35);
+    if (currentScenario === 'trolley' && activeBodies.trolley) {
+        const force = parseFloat(trolleyForce.value) || 0;
+        // applyForce takes a vector. Multiply by a small scale to make it look right.
+        Body.applyForce(activeBodies.trolley, activeBodies.trolley.position, { x: force * 0.0001, y: 0 });
+        
+        const a = force / activeBodies.trolley.mass;
+        const v = activeBodies.trolley.velocity.x * 2; // Scale for display
+        
+        netForceValue.textContent = force.toFixed(1);
+        accelValue.textContent = a.toFixed(2);
+        velValue.textContent = v.toFixed(2);
+        updateStatusMessage(force > 0 ? `Troli dipercepat (a = ${a.toFixed(2)} m/s²)` : "Troli Diam");
+    }
+    else if (currentScenario === 'rocket' && activeBodies.rocket) {
+        const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
+        if (thrust > 0) {
+            Body.applyForce(activeBodies.rocket, activeBodies.rocket.position, { x: 0, y: -thrust * 0.0001 });
+        }
+        
+        const weight = activeBodies.rocket.mass * 10;
+        let netForce = thrust > 0 ? (thrust - weight) : (activeBodies.rocket.position.y < canvas.height - 100 ? -weight : 0);
+        let a = netForce / activeBodies.rocket.mass;
+        let v = -activeBodies.rocket.velocity.y * 2;
+        
+        netForceValue.textContent = Math.abs(netForce).toFixed(1);
+        accelValue.textContent = a.toFixed(2);
+        velValue.textContent = v.toFixed(2);
+        updateStatusMessage(a > 0 ? "Roket Meluncur Naik!" : (v < 0 ? "Roket Jatuh" : "Roket di Landasan"));
+    }
+    else if (currentScenario === 'braking' && activeBodies.car) {
+        if (activeBodies.braking) {
+            // Strong braking force backwards
+            Body.applyForce(activeBodies.car, activeBodies.car.position, { x: -0.15, y: 0 });
+            if (activeBodies.car.velocity.x < 0) {
+                Body.setVelocity(activeBodies.car, {x:0, y:0});
+                activeBodies.braking = false;
+            }
+        }
+        
+        const v = activeBodies.car.velocity.x * 2;
+        const vBox = activeBodies.box.velocity.x * 2;
+        
+        netForceValue.textContent = "-";
+        accelValue.textContent = "-";
+        velValue.textContent = vBox.toFixed(2);
+        updateStatusMessage(activeBodies.braking ? "Mobil Direm! Kotak terdorong (Inersia)." : "Mobil Melaju Konstan");
+    }
+    else if (currentScenario === 'race' && activeBodies.car) {
+        const force = parseFloat(raceForce.value) || 0;
+        Body.applyForce(activeBodies.car, activeBodies.car.position, { x: force * 0.00005, y: 0 });
+        Body.applyForce(activeBodies.truck, activeBodies.truck.position, { x: force * 0.00005, y: 0 });
+        
+        if (force > 0 && Math.random() > 0.5) {
+            particles.push({x: activeBodies.car.position.x - 40, y: activeBodies.car.position.y + 10, vx: -Math.random()*5, life: 1});
+        }
+        
+        const a_car = force / activeBodies.car.mass;
+        const a_truck = force / activeBodies.truck.mass;
+        const v = activeBodies.car.velocity.x * 2;
+        
+        netForceValue.textContent = force.toFixed(1);
+        accelValue.textContent = a_car.toFixed(2);
+        velValue.textContent = v.toFixed(2);
+        if(speedBar) speedBar.style.width = Math.min(100, (v / 50) * 100) + '%';
+        
+        updateStatusMessage(`a(mobil)=${a_car.toFixed(2)} vs a(truk)=${a_truck.toFixed(2)}`);
+    }
+    else if (currentScenario === 'tugofwar' && activeBodies.box) {
+        const leftF = parseFloat(tugLeftForce.value) || 0;
+        const rightF = parseFloat(tugRightForce.value) || 0;
+        const netForce = rightF - leftF;
+        
+        Body.applyForce(activeBodies.box, activeBodies.box.position, { x: netForce * 0.0001, y: 0 });
+        
+        const a = netForce / activeBodies.box.mass;
+        const v = Math.abs(activeBodies.box.velocity.x * 2);
+        
+        netForceValue.textContent = Math.abs(netForce).toFixed(1);
+        accelValue.textContent = Math.abs(a).toFixed(2);
+        velValue.textContent = v.toFixed(2);
+        if(speedBar) speedBar.style.width = Math.min(100, (v / 50) * 100) + '%';
+        
+        if (netForce > 0) updateStatusMessage("Benda Tertarik ke Kanan!");
+        else if (netForce < 0) updateStatusMessage("Benda Tertarik ke Kiri!");
+        else updateStatusMessage("Seimbang! (Resultan = 0)");
     }
     
-    ctx.restore();
-}
-
-function drawPersonPushing(x, y) {
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    
-    // Head
-    ctx.beginPath(); ctx.arc(x, y - 80, 15, 0, Math.PI*2); ctx.stroke();
-    // Body
-    ctx.beginPath(); ctx.moveTo(x, y - 65); ctx.lineTo(x + 10, y - 30); ctx.stroke();
-    // Legs
-    ctx.beginPath(); ctx.moveTo(x + 10, y - 30); ctx.lineTo(x - 10, y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x + 10, y - 30); ctx.lineTo(x + 25, y); ctx.stroke();
-    // Arms
-    ctx.beginPath(); ctx.moveTo(x + 5, y - 55); ctx.lineTo(x + 35, y - 50); ctx.stroke();
-}
-
-function drawRocketObj(x, y, thrusting) {
-    ctx.save();
-    ctx.translate(x, y);
-    
-    // Body
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(-20, -80, 40, 80);
-    
-    // Nose
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.moveTo(-20, -80);
-    ctx.lineTo(0, -120);
-    ctx.lineTo(20, -80);
-    ctx.fill();
-    
-    // Fins
-    ctx.fillStyle = '#3b82f6';
-    ctx.beginPath(); ctx.moveTo(-20, -20); ctx.lineTo(-40, 0); ctx.lineTo(-20, 0); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(20, -20); ctx.lineTo(40, 0); ctx.lineTo(20, 0); ctx.fill();
-
-    // Fire
-    if (thrusting) {
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath();
-        ctx.moveTo(-15, 0);
-        ctx.lineTo(0, 40 + Math.random()*20);
-        ctx.lineTo(15, 0);
-        ctx.fill();
-    }
-    
-    ctx.restore();
-}
-
-function drawCarObj(x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    
-    // Tires
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath(); ctx.arc(-40, 0, 15, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(40, 0, 15, 0, Math.PI*2); ctx.fill();
-    
-    // Body
-    ctx.fillStyle = '#3b82f6';
-    ctx.beginPath();
-    ctx.roundRect(-70, -30, 140, 30, 5);
-    ctx.fill();
-    
-    // Cabin
-    ctx.fillStyle = '#93c5fd';
-    ctx.beginPath();
-    ctx.roundRect(-30, -60, 60, 30, 5);
-    ctx.fill();
-    
-    ctx.restore();
-}
-
-function drawSportsCar(x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    // Tires
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath(); ctx.arc(-25, 0, 10, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(25, 0, 10, 0, Math.PI*2); ctx.fill();
-    // Body (Sleek red)
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.moveTo(-40, -10);
-    ctx.lineTo(40, -10);
-    ctx.lineTo(30, -25);
-    ctx.lineTo(-20, -25);
-    ctx.fill();
-    ctx.restore();
-}
-
-function drawTruckObj(x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    // Tires
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath(); ctx.arc(-40, 0, 12, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(40, 0, 12, 0, Math.PI*2); ctx.fill();
-    // Cabin
-    ctx.fillStyle = '#f59e0b';
-    ctx.fillRect(20, -50, 30, 40);
-    // Cargo
-    ctx.fillStyle = '#64748b';
-    ctx.fillRect(-50, -60, 70, 50);
-    ctx.restore();
-}
-
-function drawTugBox(x, y) {
-    ctx.fillStyle = '#8b5cf6';
-    ctx.fillRect(x - 30, y - 60, 60, 60);
-    ctx.fillStyle = 'white';
-    ctx.font = '20px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText("50kg", x, y - 25);
+    timeValue.textContent = elapsedTime.toFixed(2);
 }
 
 function drawScene() {
@@ -405,144 +335,126 @@ function drawScene() {
     // Draw Ground
     ctx.fillStyle = '#475569';
     ctx.fillRect(0, groundY, canvas.width, 50);
-    
-    if (currentScenario === 'trolley') {
+
+    if (currentScenario === 'trolley' && activeBodies.trolley) {
+        const t = activeBodies.trolley;
         const isFull = trolleyMassSelect.value === "100";
-        const pixelX = canvas.width/2 - 100 + (trolley.x * SCALE);
-        
-        drawTrolley(pixelX, groundY - 10, isFull);
+        drawTrolley(t.position.x, t.position.y, t.angle, isFull);
         
         const force = parseFloat(trolleyForce.value) || 0;
-        if (force > 0) {
-            drawPersonPushing(pixelX - 100, groundY);
-            drawArrow(pixelX - 60, groundY - 50, force * 0.5, 'positive', '#ef4444', `Dorong: ${force}N`);
+        if (force > 0 && isPlaying) {
+            drawPersonPushing(t.position.x - 100, groundY);
+            drawArrow(t.position.x - 60, groundY - 50, force * 0.5, 'positive', '#ef4444', `Dorong: ${force}N`);
         }
     } 
-    else if (currentScenario === 'rocket') {
-        const pixelY = groundY - (rocket.y * SCALE);
-        const pixelX = canvas.width / 2;
+    else if (currentScenario === 'rocket' && activeBodies.rocket) {
+        const r = activeBodies.rocket;
+        drawRocketObj(r.position.x, r.position.y, r.angle, activeBodies.isThrusting && isPlaying);
         
-        drawRocketObj(pixelX, pixelY, rocket.thrusting);
-        
-        // Draw forces
-        const thrust = rocket.thrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
-        const weight = 1000;
-        
-        if (thrust > 0) {
-            // Aksi (Gas buang ke bawah)
-            drawArrow(pixelX - 40, pixelY + 20, thrust * 0.1, 'negative', '#ef4444', `Aksi (Gas): ${thrust}N`, true);
-            // Reaksi (Roket ke atas)
-            drawArrow(pixelX + 40, pixelY - 60, thrust * 0.1, 'positive', '#3b82f6', `Reaksi (Roket): ${thrust}N`, true);
+        if (isPlaying) {
+            const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
+            if (thrust > 0) {
+                drawArrow(r.position.x - 40, r.position.y + 40, thrust * 0.1, 'negative', '#ef4444', `${thrust}N (Aksi)`, true);
+                drawArrow(r.position.x + 40, r.position.y - 40, thrust * 0.1, 'positive', '#3b82f6', `${thrust}N (Reaksi)`, true);
+            }
+            drawArrow(r.position.x, r.position.y, 1000 * 0.1, 'negative', '#10b981', `Berat: 1000N`, true);
         }
-        
-        // Weight
-        drawArrow(pixelX, pixelY - 20, weight * 0.1, 'negative', '#10b981', `Berat: ${weight}N`, true);
-        
     } 
-    else if (currentScenario === 'braking') {
-        const pixelXCar = canvas.width/2 - 100 + (car.x * SCALE);
-        const pixelXBox = canvas.width/2 - 100 + (boxOnCar.x * SCALE);
-        
-        drawCarObj(pixelXCar, groundY - 15);
-        
-        // Box on top
+    else if (currentScenario === 'braking' && activeBodies.car) {
+        drawCarObj(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
         ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(pixelXBox - 20, groundY - 15 - 60 - 30, 40, 30);
+        ctx.save();
+        ctx.translate(activeBodies.box.position.x, activeBodies.box.position.y);
+        ctx.rotate(activeBodies.box.angle);
+        ctx.fillRect(-20, -15, 40, 30);
+        ctx.restore();
         
-        if (car.braking && boxOnCar.v > car.v) {
-            // Draw inertia arrow
-            drawArrow(pixelXBox, groundY - 120, 50, 'positive', '#ef4444', 'Inersia');
+        if (activeBodies.braking && activeBodies.box.velocity.x > activeBodies.car.velocity.x) {
+            drawArrow(activeBodies.box.position.x, activeBodies.box.position.y - 40, 50, 'positive', '#ef4444', 'Inersia');
         }
-    } else if (currentScenario === 'race') {
-        // Draw track lines
+    } 
+    else if (currentScenario === 'race' && activeBodies.car) {
         ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(0, groundY - 80, canvas.width, 2);
+        ctx.fillRect(0, groundY - 90, canvas.width, 2);
         
-        const pCarX = canvas.width/4 - 100 + (carRace.x * SCALE);
-        const pTruckX = canvas.width/4 - 100 + (truckRace.x * SCALE);
+        drawSportsCar(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
+        drawTruckObj(activeBodies.truck.position.x, activeBodies.truck.position.y, activeBodies.truck.angle);
         
-        drawSportsCar(pCarX, groundY - 15);
-        drawTruckObj(pTruckX, groundY - 95);
-        
-        // Draw Particles
         for (let i = particles.length - 1; i >= 0; i--) {
             let p = particles[i];
-            p.x += p.vx;
-            p.life -= 0.05;
-            if (p.life <= 0) {
-                particles.splice(i, 1);
-            } else {
+            p.x += p.vx; p.life -= 0.05;
+            if (p.life <= 0) particles.splice(i, 1);
+            else {
                 ctx.fillStyle = `rgba(200, 200, 200, ${p.life})`;
-                ctx.beginPath(); ctx.arc(canvas.width/4 - 100 + p.x, groundY - 5, 8, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
             }
         }
-    } else if (currentScenario === 'tugofwar') {
-        const pBoxX = canvas.width/2 + (tugBox.x * SCALE);
-        drawTugBox(pBoxX, groundY);
+    } 
+    else if (currentScenario === 'tugofwar' && activeBodies.box) {
+        const b = activeBodies.box;
+        drawTugBox(b.position.x, b.position.y, b.angle);
         
         const leftF = parseFloat(tugLeftForce.value) || 0;
         const rightF = parseFloat(tugRightForce.value) || 0;
         
-        drawPersonPushing(pBoxX - 80, groundY); // Kiri
-        drawPersonPushing(pBoxX + 80, groundY); // Kanan
+        drawPersonPushing(b.position.x - 100, groundY);
+        drawPersonPushing(b.position.x + 100, groundY);
         
-        // Tali
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(pBoxX - 70, groundY - 40); ctx.lineTo(pBoxX - 30, groundY - 40); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(pBoxX + 30, groundY - 40); ctx.lineTo(pBoxX + 70, groundY - 40); ctx.stroke();
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(b.position.x - 90, groundY - 40); ctx.lineTo(b.position.x - 30, b.position.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(b.position.x + 30, b.position.y); ctx.lineTo(b.position.x + 90, groundY - 40); ctx.stroke();
         
-        drawArrow(pBoxX - 60, groundY - 80, leftF * 0.3, 'negative', '#ef4444', `${leftF}N`);
-        drawArrow(pBoxX + 60, groundY - 80, rightF * 0.3, 'positive', '#3b82f6', `${rightF}N`);
-        
-        let netForce = rightF - leftF;
-        if (netForce !== 0) {
-            drawArrow(pBoxX, groundY - 120, Math.abs(netForce) * 0.3, netForce > 0 ? 'positive' : 'negative', '#10b981', `ΣF=${Math.abs(netForce)}N`);
+        if (isPlaying) {
+            drawArrow(b.position.x - 60, groundY - 80, leftF * 0.3, 'negative', '#ef4444', `${leftF}N`);
+            drawArrow(b.position.x + 60, groundY - 80, rightF * 0.3, 'positive', '#3b82f6', `${rightF}N`);
+            let netForce = rightF - leftF;
+            if (netForce !== 0) {
+                drawArrow(b.position.x, groundY - 120, Math.abs(netForce) * 0.3, netForce > 0 ? 'positive' : 'negative', '#10b981', `ΣF=${Math.abs(netForce)}N`);
+            }
         }
     }
 
-    if (isPlaying) {
+    if (isPlaying || mouseConstraint.mouse.button !== -1) {
         requestAnimationFrame(simulationLoop);
+    } else {
+        // Just draw once if paused
+        requestAnimationFrame(() => {}); 
     }
 }
 
 function simulationLoop(timestamp) {
-    if (!isPlaying) return;
     if (lastTime === 0) lastTime = timestamp;
     const dt = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
-
-    updatePhysics(dt);
+    
+    // Always update physics if playing or dragging
+    if (isPlaying || mouseConstraint.mouse.button !== -1) {
+        updatePhysics(Math.min(dt, 0.1));
+    }
+    
     drawScene();
+    if (isPlaying || mouseConstraint.mouse.button !== -1) {
+        requestAnimationFrame(simulationLoop);
+    }
 }
 
 function resetSim() {
     isPlaying = false;
     btnPlayPause.innerHTML = '▶ Mulai Simulasi';
     lastTime = 0;
-    elapsedTime = 0;
-
-    trolley.x = 0; trolley.v = 0; trolley.a = 0;
-    rocket.y = 0; rocket.v = 0; rocket.a = 0; rocket.thrusting = false;
-    car.x = 0; car.braking = false;
-    car.v = parseFloat(carSpeed.value) || 15;
-    boxOnCar.x = 0; boxOnCar.v = car.v; boxOnCar.a = 0;
+    buildScenario();
     
-    carRace.x = 0; carRace.v = 0; carRace.a = 0;
-    truckRace.x = 0; truckRace.v = 0; truckRace.a = 0;
-    tugBox.x = 0; tugBox.v = 0; tugBox.a = 0;
-    particles = [];
-    if(speedBar) speedBar.style.width = '0%';
-
     velValue.textContent = '0.00';
     netForceValue.textContent = '0';
     accelValue.textContent = '0.00';
     timeValue.textContent = '0.00';
-    updateStatusMessage("Siap");
+    if(speedBar) speedBar.style.width = '0%';
+    updateStatusMessage("Siap (Coba seret objek dengan jari/mouse!)");
     
     drawScene();
 }
 
+// Controls
 btnPlayPause.addEventListener('click', () => {
     isPlaying = !isPlaying;
     if (isPlaying) {
@@ -558,22 +470,22 @@ btnReset.addEventListener('click', resetSim);
 
 scenarioSelect.addEventListener('change', (e) => {
     currentScenario = e.target.value;
-    
     trolleyControls.style.display = currentScenario === 'trolley' ? 'block' : 'none';
     rocketControls.style.display = currentScenario === 'rocket' ? 'block' : 'none';
     brakingControls.style.display = currentScenario === 'braking' ? 'block' : 'none';
     raceControls.style.display = currentScenario === 'race' ? 'block' : 'none';
     tugOfWarControls.style.display = currentScenario === 'tugofwar' ? 'block' : 'none';
-    
     resetSim();
 });
 
-btnLaunch.addEventListener('mousedown', () => { rocket.thrusting = true; if(!isPlaying) btnPlayPause.click(); });
-btnLaunch.addEventListener('mouseup', () => { rocket.thrusting = false; });
-btnLaunch.addEventListener('mouseleave', () => { rocket.thrusting = false; });
+btnLaunch.addEventListener('mousedown', () => { if(activeBodies.rocket) activeBodies.isThrusting = true; if(!isPlaying) btnPlayPause.click(); });
+btnLaunch.addEventListener('mouseup', () => { if(activeBodies.rocket) activeBodies.isThrusting = false; });
+btnLaunch.addEventListener('mouseleave', () => { if(activeBodies.rocket) activeBodies.isThrusting = false; });
+btnLaunch.addEventListener('touchstart', (e) => { e.preventDefault(); if(activeBodies.rocket) activeBodies.isThrusting = true; if(!isPlaying) btnPlayPause.click(); });
+btnLaunch.addEventListener('touchend', () => { if(activeBodies.rocket) activeBodies.isThrusting = false; });
 
 btnBrake.addEventListener('click', () => {
-    car.braking = true;
+    if(activeBodies.car) activeBodies.braking = true;
     if(!isPlaying) btnPlayPause.click();
 });
 
@@ -581,5 +493,16 @@ btnBrake.addEventListener('click', () => {
     el.addEventListener('input', () => { if (!isPlaying) resetSim(); });
 });
 
+// Drag listener to start rendering if dragged while paused
+Events.on(mouseConstraint, 'startdrag', () => {
+    if (!isPlaying) {
+        lastTime = performance.now();
+        requestAnimationFrame(simulationLoop);
+    }
+});
+
 // Init
-scenarioSelect.dispatchEvent(new Event('change'));
+setTimeout(() => {
+    resizeCanvas();
+    scenarioSelect.dispatchEvent(new Event('change'));
+}, 100);

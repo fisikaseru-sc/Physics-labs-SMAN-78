@@ -363,8 +363,35 @@ main {
 
 /* Responsive */
 @media (max-width: 900px) {
+    body {
+        overflow-y: auto;
+        padding: 10px;
+    }
+    
+    .app-container {
+        height: auto;
+        min-height: 100vh;
+    }
+    
     main {
         grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .simulation-container {
+        height: 40vh;
+        min-height: 300px;
+    }
+    
+    .overlay-stats {
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 10px;
+    }
+    
+    .stat-box {
+        flex: 1 1 45%;
+        padding: 8px;
     }
     
     header {
