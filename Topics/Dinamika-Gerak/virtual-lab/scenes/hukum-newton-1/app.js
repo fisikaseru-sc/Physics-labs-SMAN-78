@@ -190,34 +190,68 @@ function updateStatusMessage(netForce) {
     }
 }
 
-function drawPerson(x, y, actionDir, faceDir, color) {
+function drawPerson(x, y, actionDir, faceDir, color, isPulling = false, time = 0) {
     ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    
+    ctx.save();
+    ctx.translate(x, y);
+    
+    let wobble = isPulling ? Math.sin(time * 8) * 1.5 : 0;
+    
+    let lean = 0;
+    if (isPulling) {
+        lean = actionDir === 'right' ? -0.25 : 0.25;
+    }
+    
+    ctx.rotate(lean);
     
     // Head
     ctx.beginPath();
-    ctx.arc(x, y - 40, 15, 0, Math.PI * 2);
+    ctx.arc(0, -40 + wobble, 12, 0, Math.PI * 2);
     ctx.fill();
     
-    // Body
-    ctx.fillRect(x - 5, y - 25, 10, 30);
-    
-    // Arms
+    // Body (thick rounded line instead of rect)
+    ctx.lineWidth = 14;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = color;
-    ctx.moveTo(x, y - 15);
+    ctx.moveTo(0, -25 + wobble);
+    ctx.lineTo(0, 5 + wobble);
+    ctx.stroke();
     
-    const armTargetX = actionDir === 'right' ? x + 30 : x - 30;
-    ctx.lineTo(armTargetX, y - 5);
+    // Arms (reaching towards actionDir)
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, -15 + wobble);
+    let armDx = actionDir === 'right' ? 25 : -25;
+    ctx.lineTo(armDx, -5 + wobble);
     ctx.stroke();
     
     // Legs
+    ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.moveTo(x, y + 5);
-    ctx.lineTo(x - 10, y + 25);
-    ctx.moveTo(x, y + 5);
-    ctx.lineTo(x + 10, y + 25);
+    if (isPulling) {
+        // Bracing stance
+        let frontLegDx = actionDir === 'right' ? 20 : -20;
+        let backLegDx = actionDir === 'right' ? -15 : 15;
+        // Front leg (bent)
+        ctx.moveTo(0, 5 + wobble);
+        ctx.lineTo(frontLegDx/2, 15);
+        ctx.lineTo(frontLegDx, 25);
+        // Back leg (straight)
+        ctx.moveTo(0, 5 + wobble);
+        ctx.lineTo(backLegDx, 25);
+    } else {
+        // Normal standing/walking stance
+        let stride = time > 0 ? Math.sin(time * 10) * 10 : 0;
+        ctx.moveTo(0, 5 + wobble);
+        ctx.lineTo(-10 + stride, 25);
+        ctx.moveTo(0, 5 + wobble);
+        ctx.lineTo(10 - stride, 25);
+    }
     ctx.stroke();
+    
+    ctx.restore();
 }
 
 function drawTable(x, y, w, h) {
@@ -357,18 +391,31 @@ function drawScene() {
     } else if (drawShape === 'car') {
         drawCar(boxPixelX, boxPixelY, boxPixelW, boxPixelH);
     } else if (drawShape === 'rope') {
-        ctx.strokeStyle = '#d4d4d8';
-        ctx.lineWidth = 10;
+        // Tali tambang realistis
+        ctx.strokeStyle = '#8B4513'; // SaddleBrown
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        // Super long rope
-        ctx.moveTo(boxPixelX - boxPixelW * 3, boxPixelY + boxPixelH/2);
-        ctx.lineTo(boxPixelX + boxPixelW * 3, boxPixelY + boxPixelH/2);
+        ctx.moveTo(boxPixelX - boxPixelW * 3.5, boxPixelY + boxPixelH/2);
+        ctx.lineTo(boxPixelX + boxPixelW * 3.5, boxPixelY + boxPixelH/2);
         ctx.stroke();
         
-        // Knot at center
+        // Tekstur tali (garis serong)
+        ctx.strokeStyle = '#A0522D';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for(let tx = boxPixelX - boxPixelW * 3.5; tx < boxPixelX + boxPixelW * 3.5; tx += 8) {
+            ctx.moveTo(tx, boxPixelY + boxPixelH/2 - 3);
+            ctx.lineTo(tx + 5, boxPixelY + boxPixelH/2 + 3);
+        }
+        ctx.stroke();
+        
+        // Bendera Merah (penanda tengah)
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(boxPixelX, boxPixelY + boxPixelH/2, 12, 0, Math.PI * 2);
+        ctx.moveTo(boxPixelX, boxPixelY + boxPixelH/2);
+        ctx.lineTo(boxPixelX + 10, boxPixelY + boxPixelH/2 + 25);
+        ctx.lineTo(boxPixelX - 10, boxPixelY + boxPixelH/2 + 25);
         ctx.fill();
     } else {
         ctx.fillStyle = '#cbd5e1';
@@ -387,28 +434,29 @@ function drawScene() {
         
         // Draw people on the left (pulling left, facing right towards the knot)
         for(let i=0; i<numLeft; i++) {
-            drawPerson(boxPixelX - 50 - (i * 40), personY, 'right', 'right', '#ef4444'); 
+            drawPerson(boxPixelX - 50 - (i * 45), personY, 'right', 'right', '#ef4444', true, isPlaying ? elapsedTime : 0); 
         }
         
         // Draw people on the right (pulling right, facing left towards the knot)
         for(let i=0; i<numRight; i++) {
-            drawPerson(boxPixelX + 50 + (i * 40), personY, 'left', 'left', '#10b981'); 
+            drawPerson(boxPixelX + 50 + (i * 45), personY, 'left', 'left', '#10b981', true, isPlaying ? elapsedTime : 0); 
         }
 
     } else if (scenario !== 'konstan' && !(scenario === 'custom' && customObject.value === 'car')) { 
+        // Orang Mendorong biasa
         if (forces.f1 > 0) {
             if (forces.dir1 === 'right') {
-                drawPerson(boxPixelX - boxPixelW/2 - 30, personY, 'right', 'right', '#ef4444');
+                drawPerson(boxPixelX - boxPixelW/2 - 30, personY, 'right', 'right', '#ef4444', true, isPlaying ? elapsedTime : 0);
             } else {
-                drawPerson(boxPixelX + boxPixelW/2 + 30, personY, 'left', 'left', '#ef4444');
+                drawPerson(boxPixelX + boxPixelW/2 + 30, personY, 'left', 'left', '#ef4444', true, isPlaying ? elapsedTime : 0);
             }
         }
         
         if (forces.f2 > 0) {
             if (forces.dir2 === 'right') {
-                drawPerson(boxPixelX - boxPixelW/2 - 70, personY, 'right', 'right', '#10b981'); 
+                drawPerson(boxPixelX - boxPixelW/2 - 70, personY, 'right', 'right', '#10b981', true, isPlaying ? elapsedTime : 0); 
             } else {
-                drawPerson(boxPixelX + boxPixelW/2 + 70, personY, 'left', 'left', '#10b981');
+                drawPerson(boxPixelX + boxPixelW/2 + 70, personY, 'left', 'left', '#10b981', true, isPlaying ? elapsedTime : 0);
             }
         }
     }

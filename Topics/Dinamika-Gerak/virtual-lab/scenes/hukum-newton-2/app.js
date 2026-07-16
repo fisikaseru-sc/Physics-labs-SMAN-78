@@ -43,10 +43,6 @@ const btnBrake = document.getElementById('btnBrake');
 const raceControls = document.getElementById('raceControls');
 const raceForce = document.getElementById('raceForce');
 
-const tugOfWarControls = document.getElementById('tugOfWarControls');
-const tugLeftForce = document.getElementById('tugLeftForce');
-const tugRightForce = document.getElementById('tugRightForce');
-
 const velValue = document.getElementById('velValue');
 const netForceValue = document.getElementById('netForceValue');
 const accelValue = document.getElementById('accelValue');
@@ -176,14 +172,6 @@ function drawTruckObj(x, y, angle) {
     ctx.restore();
 }
 
-function drawTugBox(x, y, angle) {
-    ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
-    ctx.fillStyle = '#c4b5fd'; ctx.fillRect(-30, -30, 60, 60);
-    ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 3; ctx.strokeRect(-30, -30, 60, 60);
-    ctx.fillStyle = '#1e293b'; ctx.font = 'bold 20px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.fillText("50kg", 0, 7);
-    ctx.restore();
-}
-
 // --- MATTER.JS SCENARIO BUILDERS ---
 function buildScenario() {
     World.clear(world);
@@ -225,11 +213,6 @@ function buildScenario() {
         activeBodies.car = Bodies.rectangle(canvas.width/4 - 100, groundY - 20, 80, 30, { mass: 1000, friction: 0.05 });
         activeBodies.truck = Bodies.rectangle(canvas.width/4 - 100, groundY - 110, 120, 60, { mass: 5000, friction: 0.05 });
         World.add(world, [activeBodies.car, activeBodies.truck]);
-    }
-    else if (currentScenario === 'tugofwar') {
-        engine.gravity.y = 0; // Top-down view or just ignoring gravity for pull
-        activeBodies.box = Bodies.rectangle(canvas.width/2, groundY - 30, 60, 60, { mass: 50, frictionAir: 0.05 });
-        World.add(world, activeBodies.box);
     }
     
     elapsedTime = 0;
@@ -315,24 +298,6 @@ function updatePhysics(dt) {
         
         updateStatusMessage(`a(mobil)=${a_car.toFixed(2)} vs a(truk)=${a_truck.toFixed(2)}`);
     }
-    else if (currentScenario === 'tugofwar' && activeBodies.box) {
-        const leftF = parseFloat(tugLeftForce.value) || 0;
-        const rightF = parseFloat(tugRightForce.value) || 0;
-        const netForce = rightF - leftF;
-        
-        Body.applyForce(activeBodies.box, activeBodies.box.position, { x: netForce * 0.0001, y: 0 });
-        
-        const a = netForce / activeBodies.box.mass;
-        const v = Math.abs(activeBodies.box.velocity.x * 2);
-        
-        netForceValue.textContent = Math.abs(netForce).toFixed(1);
-        accelValue.textContent = Math.abs(a).toFixed(2);
-        velValue.textContent = v.toFixed(2);
-        
-        if (netForce > 0) updateStatusMessage("Benda Tertarik ke Kanan!");
-        else if (netForce < 0) updateStatusMessage("Benda Tertarik ke Kiri!");
-        else updateStatusMessage("Seimbang! (Resultan = 0)");
-    }
     // --- BOUNDARY CHECKS (Auto-Stop) ---
     const checkStop = (body, condition, msg) => {
         if (body && condition) {
@@ -350,9 +315,6 @@ function updatePhysics(dt) {
         if (isPlaying) checkStop(activeBodies.truck, activeBodies.truck.position.x > canvas.width - 50, "🏁 Balapan Selesai: Truk menang!");
     } else if (currentScenario === 'rocket') {
         checkStop(activeBodies.rocket, activeBodies.rocket.position.y < -50, "🚀 Simulasi Selesai: Roket meluncur ke angkasa!");
-    } else if (currentScenario === 'tugofwar') {
-        checkStop(activeBodies.box, activeBodies.box.position.x > canvas.width - 50, "🏆 Simulasi Selesai: Tim Kanan Menang!");
-        if (isPlaying) checkStop(activeBodies.box, activeBodies.box.position.x < 50, "🏆 Simulasi Selesai: Tim Kiri Menang!");
     }
     
     timeValue.textContent = elapsedTime.toFixed(2);
@@ -392,11 +354,9 @@ function drawScene() {
         ctx.fillStyle = '#4ade80'; // Grass
         ctx.fillRect(0, groundY, canvas.width, 50);
         
-        if (currentScenario !== 'tugofwar') {
-            // Asphalt for vehicles
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillRect(0, groundY, canvas.width, 12);
-        }
+        // Asphalt for vehicles
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(0, groundY, canvas.width, 12);
     }
 
     if (currentScenario === 'trolley' && activeBodies.trolley) {
@@ -450,29 +410,6 @@ function drawScene() {
             else {
                 ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`;
                 ctx.beginPath(); ctx.arc(p.x, p.y, 8 + (1-p.life)*15, 0, Math.PI*2); ctx.fill();
-            }
-        }
-    } 
-    else if (currentScenario === 'tugofwar' && activeBodies.box) {
-        const b = activeBodies.box;
-        drawTugBox(b.position.x, b.position.y, b.angle);
-        
-        const leftF = parseFloat(tugLeftForce.value) || 0;
-        const rightF = parseFloat(tugRightForce.value) || 0;
-        
-        drawPersonPushing(b.position.x - 100, groundY);
-        drawPersonPushing(b.position.x + 100, groundY);
-        
-        ctx.strokeStyle = '#78350f'; ctx.lineWidth = 6; // Thick Rope
-        ctx.beginPath(); ctx.moveTo(b.position.x - 90, groundY - 40); ctx.lineTo(b.position.x - 30, b.position.y); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(b.position.x + 30, b.position.y); ctx.lineTo(b.position.x + 90, groundY - 40); ctx.stroke();
-        
-        if (isPlaying) {
-            drawArrow(b.position.x - 60, groundY - 80, leftF * 0.3, 'negative', '#ef4444', `${leftF}N`);
-            drawArrow(b.position.x + 60, groundY - 80, rightF * 0.3, 'positive', '#3b82f6', `${rightF}N`);
-            let netForce = rightF - leftF;
-            if (netForce !== 0) {
-                drawArrow(b.position.x, groundY - 120, Math.abs(netForce) * 0.3, netForce > 0 ? 'positive' : 'negative', '#10b981', `ΣF=${Math.abs(netForce)}N`);
             }
         }
     }
@@ -529,7 +466,6 @@ scenarioSelect.addEventListener('change', (e) => {
     rocketControls.style.display = currentScenario === 'rocket' ? 'block' : 'none';
     brakingControls.style.display = currentScenario === 'braking' ? 'block' : 'none';
     raceControls.style.display = currentScenario === 'race' ? 'block' : 'none';
-    tugOfWarControls.style.display = currentScenario === 'tugofwar' ? 'block' : 'none';
     resetSim();
 });
 
