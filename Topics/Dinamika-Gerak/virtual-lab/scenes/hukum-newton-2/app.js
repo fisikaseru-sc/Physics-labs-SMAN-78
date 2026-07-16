@@ -331,6 +331,27 @@ function updatePhysics(dt) {
         else if (netForce < 0) updateStatusMessage("Benda Tertarik ke Kiri!");
         else updateStatusMessage("Seimbang! (Resultan = 0)");
     }
+    // --- BOUNDARY CHECKS (Auto-Stop) ---
+    const checkStop = (body, condition, msg) => {
+        if (body && condition) {
+            isPlaying = false;
+            btnPlayPause.innerHTML = '▶ Mulai Simulasi';
+            updateStatusMessage(msg);
+            Body.setVelocity(body, {x: 0, y: 0});
+        }
+    };
+
+    if (currentScenario === 'trolley') {
+        checkStop(activeBodies.trolley, activeBodies.trolley.position.x > canvas.width - 50, "🏁 Simulasi Selesai: Troli mencapai ujung lintasan!");
+    } else if (currentScenario === 'race') {
+        checkStop(activeBodies.car, activeBodies.car.position.x > canvas.width - 50, "🏁 Balapan Selesai: Mobil Sport menang!");
+        if (isPlaying) checkStop(activeBodies.truck, activeBodies.truck.position.x > canvas.width - 50, "🏁 Balapan Selesai: Truk menang!");
+    } else if (currentScenario === 'rocket') {
+        checkStop(activeBodies.rocket, activeBodies.rocket.position.y < -50, "🚀 Simulasi Selesai: Roket meluncur ke angkasa!");
+    } else if (currentScenario === 'tugofwar') {
+        checkStop(activeBodies.box, activeBodies.box.position.x > canvas.width - 50, "🏆 Simulasi Selesai: Tim Kanan Menang!");
+        if (isPlaying) checkStop(activeBodies.box, activeBodies.box.position.x < 50, "🏆 Simulasi Selesai: Tim Kiri Menang!");
+    }
     
     timeValue.textContent = elapsedTime.toFixed(2);
 }
