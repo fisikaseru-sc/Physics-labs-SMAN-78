@@ -272,7 +272,7 @@ function buildScenario() {
     if (currentScenario === 'trolley') {
         engine.gravity.scale = 0.001; // default
         const mass = parseFloat(trolleyMassInput.value) || 50;
-        activeBodies.trolley = Bodies.rectangle(logicalWidth/2 - 100, groundY - 50, 100, 80, { mass: mass, friction: 0.05, restitution: 0.2 });
+        activeBodies.trolley = Bodies.rectangle(logicalWidth/2 - 100, groundY - 50, 100, 80, { mass: mass, friction: 0.05, restitution: 0.2, inertia: Infinity });
         World.add(world, activeBodies.trolley);
         activeBodies.simVelocity = 0;
     } 
@@ -290,8 +290,8 @@ function buildScenario() {
     }
     else if (currentScenario === 'braking') {
         engine.gravity.scale = 0.001; // default
-        // Restore car friction to 0.1 so box has friction with the car top, but ground has 0 friction
-        activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.1, frictionAir: 0 });
+        // Restore car friction to 0.1 so box has friction with the car top, ground has 0 friction, and inertia to Infinity to prevent tipping over
+        activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.1, frictionAir: 0, inertia: Infinity });
         activeBodies.box = Bodies.rectangle(logicalWidth/2 - 150, groundY - 75, 40, 30, { mass: 50, friction: 0.3, frictionAir: 0 });
         
         let startSpeed = parseFloat(carSpeed.value) || 15;
@@ -309,8 +309,8 @@ function buildScenario() {
         engine.gravity.scale = 0.001; // default
         
         const tMass = parseFloat(document.getElementById('truckMass')?.value) || 5000;
-        activeBodies.car = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 + 50, 80, 30, { mass: 1000, frictionAir: 0.05, restitution: 0 });
-        activeBodies.truck = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 - 50, 120, 40, { mass: tMass, frictionAir: 0.05, restitution: 0 });
+        activeBodies.car = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 + 50, 80, 30, { mass: 1000, frictionAir: 0.05, restitution: 0, inertia: Infinity });
+        activeBodies.truck = Bodies.rectangle(logicalWidth/4 - 100, logicalHeight/2 - 50, 120, 40, { mass: tMass, frictionAir: 0.05, restitution: 0, inertia: Infinity });
         World.add(world, [activeBodies.car, activeBodies.truck]);
         activeBodies.car.simVelocity = 0;
         activeBodies.truck.simVelocity = 0;
@@ -555,7 +555,7 @@ function drawScene() {
     
     // Draw Moon in world-space for Rocket Mode
     if (currentScenario === 'rocket') {
-        const moonX = logicalWidth / 2 + 100;
+        const moonX = logicalWidth / 2;
         const moonY = -2500;
         
         // Moon Glow
@@ -766,7 +766,7 @@ function simulationLoop(timestamp) {
     }
     
     // Smooth camera transition (lerp)
-    const lerpFactor = currentScenario === 'rocket' ? 0.25 : 0.08;
+    const lerpFactor = currentScenario === 'rocket' ? 1.0 : 0.08;
     cameraX += (targetCameraX - cameraX) * lerpFactor;
     cameraY += (targetCameraY - cameraY) * lerpFactor;
     
