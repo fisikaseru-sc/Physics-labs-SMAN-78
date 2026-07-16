@@ -78,11 +78,10 @@
                 <!-- KONTROL TROLI -->
                 <div id="trolleyControls" class="scenario-controls mt-10">
                     <div class="control-group mt-10">
-                        <label>Muatan Troli</label>
-                        <select id="trolleyMassSelect" class="styled-select">
-                            <option value="10">Kosong (10 kg)</option>
-                            <option value="100">Penuh (100 kg)</option>
-                        </select>
+                        <label>Massa Troli (kg)</label>
+                        <div class="input-row">
+                            <input type="number" id="trolleyMassInput" min="10" max="500" value="50" class="number-input">
+                        </div>
                     </div>
                     <div class="control-group mt-10">
                         <label>Gaya Dorong (N)</label>

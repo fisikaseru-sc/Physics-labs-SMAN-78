@@ -29,7 +29,7 @@ const btnReset = document.getElementById('btnReset');
 const scenarioSelect = document.getElementById('scenarioSelect');
 
 const trolleyControls = document.getElementById('trolleyControls');
-const trolleyMassSelect = document.getElementById('trolleyMassSelect');
+const trolleyMassInput = document.getElementById('trolleyMassInput');
 const trolleyForce = document.getElementById('trolleyForce');
 
 const rocketControls = document.getElementById('rocketControls');
@@ -62,6 +62,8 @@ let particles = [];
 let activeBodies = {}; // Store references to Matter bodies
 let logicalWidth = 800;
 let logicalHeight = 600;
+let cameraX = 0;
+let cameraY = 0;
 
 function resizeCanvas() {
     const container = canvas.parentElement;
@@ -111,7 +113,7 @@ function drawArrow(x, y, length, direction, color, label, isVertical = false) {
     else ctx.fillText(label, x + sign * (actualLength / 2), y - arrowHeadSize - 5);
 }
 
-function drawTrolley(x, y, angle, isFull) {
+function drawTrolley(x, y, angle, mass) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
     ctx.fillStyle = '#334155';
     ctx.beginPath(); ctx.arc(-25, 25, 8, 0, Math.PI*2); ctx.fill();
@@ -125,10 +127,19 @@ function drawTrolley(x, y, angle, isFull) {
     for (let j=-20; j<=10; j+=10) { ctx.beginPath(); ctx.moveTo(-32 + (j+20)*0.1, j); ctx.lineTo(32 - (j+20)*0.1, j); ctx.stroke(); }
     ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(-35, -30); ctx.lineTo(-45, -45); ctx.lineTo(-55, -45); ctx.stroke();
-    if (isFull) {
+    
+    // Draw load dynamically based on mass input (base trolley is 10kg)
+    if (mass > 10) {
+        // Red box / carton
         ctx.fillStyle = '#ef4444'; ctx.fillRect(-20, -20, 15, 35);
         ctx.fillStyle = '#f87171'; ctx.beginPath(); ctx.moveTo(-20, -20); ctx.lineTo(-12, -28); ctx.lineTo(-5, -20); ctx.fill();
+    }
+    if (mass > 40) {
+        // Blue box
         ctx.fillStyle = '#3b82f6'; ctx.fillRect(0, -10, 20, 25);
+    }
+    if (mass > 100) {
+        // Emerald bag / veggies
         ctx.fillStyle = '#10b981'; ctx.beginPath(); ctx.arc(10, -15, 10, 0, Math.PI*2); ctx.arc(15, -20, 8, 0, Math.PI*2); ctx.fill();
     }
     ctx.restore();
@@ -246,7 +257,7 @@ function buildScenario() {
 
     if (currentScenario === 'trolley') {
         engine.gravity.scale = 0.001; // default
-        const mass = parseFloat(trolleyMassSelect.value) || 10;
+        const mass = parseFloat(trolleyMassInput.value) || 50;
         activeBodies.trolley = Bodies.rectangle(logicalWidth/2 - 100, groundY - 50, 100, 80, { mass: mass, friction: 0.05, restitution: 0.2 });
         World.add(world, activeBodies.trolley);
     } 
@@ -401,12 +412,12 @@ function updatePhysics(dt) {
     };
 
     if (currentScenario === 'trolley') {
-        checkStop(activeBodies.trolley, activeBodies.trolley.position.x > logicalWidth - 50, "🏁 Simulasi Selesai: Troli mencapai ujung lintasan!");
+        // Troli bisa jalan selamanya tanpa garis finish!
     } else if (currentScenario === 'race') {
-        checkStop(activeBodies.car, activeBodies.car.position.x > logicalWidth - 50, "🏁 Balapan Selesai: Mobil Sport menang!");
-        if (isPlaying) checkStop(activeBodies.truck, activeBodies.truck.position.x > logicalWidth - 50, "🏁 Balapan Selesai: Truk menang!");
+        checkStop(activeBodies.car, activeBodies.car.position.x > 2000, "🏁 Balapan Selesai: Mobil Sport menang!");
+        if (isPlaying) checkStop(activeBodies.truck, activeBodies.truck.position.x > 2000, "🏁 Balapan Selesai: Truk menang!");
     } else if (currentScenario === 'rocket') {
-        checkStop(activeBodies.rocket, activeBodies.rocket.position.y < -50, "🚀 Simulasi Selesai: Roket berhasil meluncur ke angkasa!");
+        checkStop(activeBodies.rocket, activeBodies.rocket.position.y < -3000, "🚀 Simulasi Selesai: Roket berhasil mencapai orbit angkasa luar!");
         
         // Logika validasi roket gagal meluncur jika di landasan > 3 detik setelah dinyalakan dan a <= 0
         const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
@@ -416,6 +427,33 @@ function updatePhysics(dt) {
         }
     }
     
+    // --- CAMERA & MOUSE UPDATE ---
+    if (currentScenario === 'trolley' && activeBodies.trolley) {
+        cameraX = activeBodies.trolley.position.x - 200;
+        cameraY = 0;
+    } else if (currentScenario === 'rocket' && activeBodies.rocket) {
+        cameraX = 0;
+        const threshold = logicalHeight - 250;
+        if (activeBodies.rocket.position.y < threshold) {
+            cameraY = activeBodies.rocket.position.y - threshold;
+        } else {
+            cameraY = 0;
+        }
+    } else if (currentScenario === 'race' && activeBodies.car && activeBodies.truck) {
+        const leaderX = Math.max(activeBodies.car.position.x, activeBodies.truck.position.x);
+        cameraX = leaderX - 200;
+        cameraY = 0;
+    } else if (currentScenario === 'braking' && activeBodies.car) {
+        if (!activeBodies.braking) {
+            cameraX = activeBodies.car.position.x - 200;
+        }
+        cameraY = 0;
+    }
+    
+    if (mouseConstraint && mouseConstraint.mouse) {
+        Matter.Mouse.setOffset(mouseConstraint.mouse, { x: cameraX, y: cameraY });
+    }
+    
     timeValue.textContent = elapsedTime.toFixed(2);
 }
 
@@ -423,131 +461,68 @@ function drawScene() {
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     const groundY = logicalHeight - 50;
     
-    // Conditionally Draw Background (Indoor vs Outdoor)
+    // 1. SCREEN-SPACE BACKGROUND (Solid Colors)
     if (currentScenario === 'trolley') {
-        // INDOOR CLASSROOM / SUPERMARKET
-        // Wall
+        // Wall solid background
         ctx.fillStyle = '#fef3c7'; // Warm Yellowish White Wall
         ctx.fillRect(0, 0, logicalWidth, groundY);
-        // Baseboard (List Dinding)
-        ctx.fillStyle = '#d97706'; // Wood color
-        ctx.fillRect(0, groundY - 15, logicalWidth, 15);
-        // Floor (Ceramic Tiles)
+        // Floor solid background
         ctx.fillStyle = '#f8fafc';
         ctx.fillRect(0, groundY, logicalWidth, 50);
-        // Tile lines
-        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2;
-        for(let i = 0; i < logicalWidth; i+=100) {
-            ctx.beginPath(); ctx.moveTo(i, groundY); ctx.lineTo(i - 20, logicalHeight); ctx.stroke();
-        }
     } else if (currentScenario === 'race') {
-        ctx.fillStyle = '#10b981'; 
+        // Green Grass
+        ctx.fillStyle = '#22c55e';
         ctx.fillRect(0, 0, logicalWidth, logicalHeight);
-        ctx.fillStyle = '#334155'; 
-        ctx.fillRect(0, logicalHeight/2 - 100, logicalWidth, 200);
-        ctx.lineWidth = 8;
-        for(let i=0; i<logicalWidth; i+=40) {
-            ctx.strokeStyle = (i/40)%2===0 ? '#ef4444' : '#ffffff';
-            ctx.beginPath(); ctx.moveTo(i, logicalHeight/2 - 100); ctx.lineTo(i+40, logicalHeight/2 - 100); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(i, logicalHeight/2 + 100); ctx.lineTo(i+40, logicalHeight/2 + 100); ctx.stroke();
-        }
-        ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 4; ctx.setLineDash([30, 30]);
-        ctx.beginPath(); ctx.moveTo(0, logicalHeight/2); ctx.lineTo(logicalWidth, logicalHeight/2); ctx.stroke();
-        ctx.setLineDash([]);
     } else {
-        // OUTDOOR
-        // Sky Background
+        // Sky Gradient
         let skyGradient = ctx.createLinearGradient(0, 0, 0, logicalHeight);
         skyGradient.addColorStop(0, '#bae6fd');
         skyGradient.addColorStop(1, '#f0f9ff');
         ctx.fillStyle = skyGradient;
         ctx.fillRect(0, 0, logicalWidth, logicalHeight);
-        
-        // Ground (Grass + Asphalt Line)
-        ctx.fillStyle = '#4ade80'; // Grass
-        ctx.fillRect(0, groundY, logicalWidth, 50);
-        
-        // Asphalt for vehicles
-        ctx.fillStyle = '#94a3b8';
-        ctx.fillRect(0, groundY, logicalWidth, 12);
     }
-
-    if (currentScenario === 'trolley' && activeBodies.trolley) {
-        const t = activeBodies.trolley;
-        const isFull = trolleyMassSelect.value === "100";
-        drawTrolley(t.position.x, t.position.y, t.angle, isFull);
+    
+    // 2. WORLD-SPACE DRAWINGS (Translated by Camera)
+    ctx.save();
+    ctx.translate(-cameraX, -cameraY);
+    
+    if (currentScenario === 'trolley') {
+        // Draw repeating baseboard
+        ctx.fillStyle = '#d97706'; // Wood color
+        const startX = Math.floor(cameraX / 100) * 100 - 100;
+        ctx.fillRect(startX, groundY - 15, logicalWidth + 200, 15);
         
-        const force = parseFloat(trolleyForce.value) || 0;
-        if (force > 0 && isPlaying) {
-            drawPersonPushing(t.position.x - 100, groundY);
-            drawArrow(t.position.x - 60, groundY - 50, force * 0.5, 'positive', '#ef4444', `Dorong: ${force}N`);
+        // Draw repeating Floor Tile lines
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2;
+        for (let i = startX; i < startX + logicalWidth + 200; i += 100) {
+            ctx.beginPath(); ctx.moveTo(i, groundY); ctx.lineTo(i - 20, logicalHeight); ctx.stroke();
         }
-    } 
-    else if (currentScenario === 'rocket' && activeBodies.rocket) {
-        const r = activeBodies.rocket;
-        drawRocketObj(r.position.x, r.position.y, r.angle, activeBodies.isThrusting && isPlaying);
         
-        if (isPlaying) {
-            const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
-            if (thrust > 0) {
-                drawArrow(r.position.x - 40, r.position.y + 40, thrust * 0.1, 'negative', '#ef4444', `${thrust}N (Aksi)`, true);
-                drawArrow(r.position.x + 40, r.position.y - 40, thrust * 0.1, 'positive', '#3b82f6', `${thrust}N (Reaksi)`, true);
+        // Draw Trolley
+        if (activeBodies.trolley) {
+            const t = activeBodies.trolley;
+            const mass = parseFloat(trolleyMassInput.value) || 50;
+            drawTrolley(t.position.x, t.position.y, t.angle, mass);
+            
+            const force = parseFloat(trolleyForce.value) || 0;
+            if (force > 0 && isPlaying) {
+                drawPersonPushing(t.position.x - 100, groundY);
+                drawArrow(t.position.x - 60, groundY - 50, force * 0.5, 'positive', '#ef4444', `Dorong: ${force}N`);
             }
-            drawArrow(r.position.x, r.position.y, 980 * 0.1, 'negative', '#10b981', `Berat: 980N`, true);
         }
-    } 
-    else if (currentScenario === 'braking' && activeBodies.car) {
-        drawCarObj(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
-        ctx.save();
-        ctx.translate(activeBodies.box.position.x, activeBodies.box.position.y);
-        ctx.rotate(activeBodies.box.angle);
-        ctx.fillStyle = '#8b5cf6';
-        ctx.beginPath(); ctx.roundRect(-20, -15, 40, 30, 4); ctx.fill();
-        ctx.restore();
-        
-        if (activeBodies.hasBraked) {
-            let mBox = 50; // Massa kotak
-            let aCar = 5; // Perlambatan mobil asumsi m/s^2
-            let fInersia = mBox * aCar; // 250 N
-            let fGesek = 0.3 * mBox * 9.8; // Mu * N = 147 N
-            
-            // Panah hanya muncul saat kotak masih terlempar meluncur ke depan
-            if (activeBodies.box.velocity.x > activeBodies.car.velocity.x && activeBodies.box.velocity.x > 0.1) {
-                drawArrow(activeBodies.box.position.x + 20, activeBodies.box.position.y - 30, 80, 'positive', '#ef4444', `Gaya Inersia: ${fInersia} N`);
-                drawArrow(activeBodies.box.position.x - 20, activeBodies.box.position.y + 35, 60, 'negative', '#f59e0b', `Gaya Gesek: ${fGesek.toFixed(0)} N`);
-            }
-            
-            const boxX = Math.round(activeBodies.box.position.x);
-            const boxY = Math.round(activeBodies.box.position.y);
-            
-            ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
-            ctx.beginPath(); ctx.roundRect(boxX - 110, boxY - 130, 290, 65, 8); ctx.fill();
-            
-            ctx.fillStyle = "#ffffff";
-            ctx.font = 'bold 14px Inter, sans-serif';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(`Perlambatan Mobil (a) = -${aCar} m/s²`, boxX - 95, boxY - 105);
-            ctx.fillStyle = "#fde047";
-            ctx.fillText(`F_inersia > F_gesek (Kotak Terlempar!)`, boxX - 95, boxY - 80);
-            ctx.textBaseline = 'alphabetic'; // Reset baseline
-        }
-    } 
-    else if (currentScenario === 'race' && activeBodies.car) {
-        // Draw Track (Top-down view)
+    }
+    else if (currentScenario === 'race') {
         const trackY = logicalHeight / 2;
-        
-        // Grass (Bahu jalan)
-        ctx.fillStyle = '#22c55e'; // Green grass
-        ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+        const startX = Math.floor(cameraX / 40) * 40 - 40;
+        const widthToDraw = logicalWidth + 80;
         
         // Asphalt
-        ctx.fillStyle = '#334155'; // Slate gray asphalt
-        ctx.fillRect(0, trackY - 100, logicalWidth, 200);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(startX, trackY - 100, widthToDraw, 200);
         
         // Track borders (white/red stripes)
         ctx.lineWidth = 6;
-        for (let b = 0; b < logicalWidth; b += 40) {
+        for (let b = startX; b < startX + widthToDraw; b += 40) {
             ctx.strokeStyle = (b % 80 === 0) ? '#ef4444' : '#ffffff';
             ctx.beginPath(); ctx.moveTo(b, trackY - 97); ctx.lineTo(b + 40, trackY - 97); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(b, trackY + 97); ctx.lineTo(b + 40, trackY + 97); ctx.stroke();
@@ -557,16 +532,123 @@ function drawScene() {
         ctx.strokeStyle = '#e2e8f0';
         ctx.lineWidth = 4;
         ctx.setLineDash([20, 20]);
-        ctx.beginPath();
-        ctx.moveTo(0, trackY);
-        ctx.lineTo(logicalWidth, trackY);
-        ctx.stroke();
-        ctx.setLineDash([]); // Reset line dash
+        ctx.beginPath(); ctx.moveTo(startX, trackY); ctx.lineTo(startX + widthToDraw, trackY); ctx.stroke();
+        ctx.setLineDash([]);
         
-        drawSportsCar(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
-        drawTruckObj(activeBodies.truck.position.x, activeBodies.truck.position.y, activeBodies.truck.angle);
+        // Draw Checkered Finish Line at world coordinates x = 2000
+        const finishX = 2000;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(finishX, trackY - 100, 30, 200);
+        ctx.fillStyle = '#000000';
+        for(let row=0; row<10; row++) {
+            for(let col=0; col<2; col++) {
+                if((row+col)%2 === 0) {
+                    ctx.fillRect(finishX + col*15, trackY - 100 + row*20, 15, 20);
+                }
+            }
+        }
+        
+        // Text "FINISH"
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("FINISH", finishX + 15, trackY - 110);
+        
+        if (activeBodies.car && activeBodies.truck) {
+            drawSportsCar(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
+            drawTruckObj(activeBodies.truck.position.x, activeBodies.truck.position.y, activeBodies.truck.angle);
+        }
+    }
+    else if (currentScenario === 'rocket' && activeBodies.rocket) {
+        // Draw Ground (Grass + Asphalt Line) in world-space
+        ctx.fillStyle = '#4ade80'; // Grass
+        ctx.fillRect(-1000, groundY, 3000, 100);
+        ctx.fillStyle = '#94a3b8'; // Pad base
+        ctx.fillRect(-1000, groundY, 3000, 12);
+        
+        // Draw Launch Pad Tower (visual decoration)
+        ctx.strokeStyle = '#475569'; ctx.lineWidth = 4;
+        ctx.beginPath();
+        // Left frame
+        ctx.moveTo(logicalWidth/2 - 60, groundY); ctx.lineTo(logicalWidth/2 - 60, groundY - 300);
+        // Right frame
+        ctx.moveTo(logicalWidth/2 - 80, groundY); ctx.lineTo(logicalWidth/2 - 80, groundY - 300);
+        // Crossbeams
+        for (let h = groundY; h > groundY - 300; h -= 30) {
+            ctx.moveTo(logicalWidth/2 - 80, h); ctx.lineTo(logicalWidth/2 - 60, h);
+            ctx.moveTo(logicalWidth/2 - 80, h); ctx.lineTo(logicalWidth/2 - 60, h - 30);
+        }
+        ctx.stroke();
+        
+        // Draw Rocket
+        if (activeBodies.rocket) {
+            const r = activeBodies.rocket;
+            drawRocketObj(r.position.x, r.position.y, r.angle, activeBodies.isThrusting && isPlaying);
+            
+            if (isPlaying) {
+                const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
+                if (thrust > 0) {
+                    drawArrow(r.position.x - 40, r.position.y + 40, thrust * 0.1, 'negative', '#ef4444', `${thrust}N (Aksi)`, true);
+                    drawArrow(r.position.x + 40, r.position.y - 40, thrust * 0.1, 'positive', '#3b82f6', `${thrust}N (Reaksi)`, true);
+                }
+                drawArrow(r.position.x, r.position.y, 980 * 0.1, 'negative', '#10b981', `Berat: 980N`, true);
+            }
+        }
+    }
+    else if (currentScenario === 'braking' && activeBodies.car) {
+        const startX = Math.floor(cameraX / 100) * 100 - 100;
+        
+        // Draw Ground (Grass + Asphalt Line) in world-space
+        ctx.fillStyle = '#4ade80'; // Grass
+        ctx.fillRect(startX, groundY, logicalWidth + 200, 100);
+        ctx.fillStyle = '#94a3b8'; // Asphalt
+        ctx.fillRect(startX, groundY, logicalWidth + 200, 12);
+        
+        // Draw road marks
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+        for (let i = startX; i < startX + logicalWidth + 200; i += 150) {
+            ctx.beginPath(); ctx.moveTo(i, groundY + 6); ctx.lineTo(i + 40, groundY + 6); ctx.stroke();
+        }
+        
+        if (activeBodies.car && activeBodies.box) {
+            drawCarObj(activeBodies.car.position.x, activeBodies.car.position.y, activeBodies.car.angle);
+            ctx.save();
+            ctx.translate(activeBodies.box.position.x, activeBodies.box.position.y);
+            ctx.rotate(activeBodies.box.angle);
+            ctx.fillStyle = '#8b5cf6';
+            ctx.beginPath(); ctx.roundRect(-20, -15, 40, 30, 4); ctx.fill();
+            ctx.restore();
+            
+            if (activeBodies.hasBraked) {
+                let mBox = 50; 
+                let aCar = 5; 
+                let fInersia = mBox * aCar; 
+                let fGesek = 0.3 * mBox * 9.8; 
+                
+                if (activeBodies.box.velocity.x > activeBodies.car.velocity.x && activeBodies.box.velocity.x > 0.1) {
+                    drawArrow(activeBodies.box.position.x + 20, activeBodies.box.position.y - 30, 80, 'positive', '#ef4444', `Gaya Inersia: ${fInersia} N`);
+                    drawArrow(activeBodies.box.position.x - 20, activeBodies.box.position.y + 35, 60, 'negative', '#f59e0b', `Gaya Gesek: ${fGesek.toFixed(0)} N`);
+                }
+                
+                const boxX = Math.round(activeBodies.box.position.x);
+                const boxY = Math.round(activeBodies.box.position.y);
+                
+                ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+                ctx.beginPath(); ctx.roundRect(boxX - 110, boxY - 130, 290, 65, 8); ctx.fill();
+                
+                ctx.fillStyle = "#ffffff";
+                ctx.font = 'bold 14px Inter, sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`Perlambatan Mobil (a) = -${aCar} m/s²`, boxX - 95, boxY - 105);
+                ctx.fillStyle = "#fde047";
+                ctx.fillText(`F_inersia > F_gesek (Kotak Terlempar!)`, boxX - 95, boxY - 80);
+                ctx.textBaseline = 'alphabetic'; 
+            }
+        }
     }
     
+    // Draw particles translated by camera
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
         p.x += (p.vx || 0); 
@@ -578,6 +660,8 @@ function drawScene() {
             ctx.beginPath(); ctx.arc(p.x, p.y, 8 + (1-p.life)*15, 0, Math.PI*2); ctx.fill();
         }
     }
+    
+    ctx.restore();
 }
 
 function simulationLoop(timestamp) {
@@ -600,6 +684,11 @@ function resetSim() {
     isPlaying = false;
     btnPlayPause.innerHTML = '▶ Mulai Simulasi';
     lastTime = 0;
+    cameraX = 0;
+    cameraY = 0;
+    if (mouseConstraint && mouseConstraint.mouse) {
+        Matter.Mouse.setOffset(mouseConstraint.mouse, { x: 0, y: 0 });
+    }
     buildScenario();
     
     velValue.textContent = '0.00';
@@ -683,7 +772,7 @@ btnBrake.addEventListener('click', () => {
     if(!isPlaying) btnPlayPause.click();
 });
 
-[trolleyMassSelect, trolleyForce, rocketThrust, carSpeed, raceForce].forEach(el => {
+[trolleyMassInput, trolleyForce, rocketThrust, carSpeed, raceForce].forEach(el => {
     el.addEventListener('input', () => { if (!isPlaying) resetSim(); });
 });
 
