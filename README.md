@@ -41,14 +41,7 @@ Proyek ini sepenuhnya statis (*Frontend-only*). Anda bisa langsung membukanya ta
    ```
 3. **Akses Aplikasi:**
    Buka peramban web (*browser*) Anda dan navigasi ke `http://localhost:8000/`.
-
-## ⚙️ Petunjuk Mode Guru
-
-Sistem dirancang untuk mencegah siswa mengakses materi yang belum diajarkan.
-- Secara default, aplikasi berada dalam **Mode Siswa**.
-- Untuk membuka modul yang terkunci, klik ikon **⚙️ Mode Guru** di pojok kanan atas Dashboard.
-- Masukkan PIN Guru: **`1234`**
-- Nyalakan saklar (switch) hijau pada modul yang ingin diaktifkan, lalu klik tombol "Keluar Mode Guru".
+   
 
 ## 📝 Lisensi
-Hak Cipta © 2026 Tim Fisika SMAN 78. Proyek ini dilisensikan di bawah Lisensi MIT.
+Hak Cipta © 2026 PKM Fisika SMAN 78. Proyek ini dilisensikan di bawah Lisensi MIT.
