@@ -516,15 +516,20 @@ function drawScene() {
                 drawArrow(activeBodies.box.position.x - 20, activeBodies.box.position.y + 35, 60, 'negative', '#f59e0b', `Gaya Gesek: ${fGesek.toFixed(0)} N`);
             }
             
-            ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-            ctx.beginPath(); ctx.roundRect(activeBodies.box.position.x - 100, activeBodies.box.position.y - 120, 250, 60, 8); ctx.fill();
+            const boxX = Math.round(activeBodies.box.position.x);
+            const boxY = Math.round(activeBodies.box.position.y);
+            
+            ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+            ctx.beginPath(); ctx.roundRect(boxX - 110, boxY - 130, 290, 65, 8); ctx.fill();
             
             ctx.fillStyle = "#ffffff";
-            ctx.font = '13px Inter, sans-serif';
+            ctx.font = 'bold 14px Inter, sans-serif';
             ctx.textAlign = 'left';
-            ctx.fillText(`Perlambatan Mobil (a) = -${aCar} m/s²`, activeBodies.box.position.x - 85, activeBodies.box.position.y - 95);
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`Perlambatan Mobil (a) = -${aCar} m/s²`, boxX - 95, boxY - 105);
             ctx.fillStyle = "#fde047";
-            ctx.fillText(`F_inersia > F_gesek (Kotak Terlempar!)`, activeBodies.box.position.x - 85, activeBodies.box.position.y - 75);
+            ctx.fillText(`F_inersia > F_gesek (Kotak Terlempar!)`, boxX - 95, boxY - 80);
+            ctx.textBaseline = 'alphabetic'; // Reset baseline
         }
     } 
     else if (currentScenario === 'race' && activeBodies.car) {
