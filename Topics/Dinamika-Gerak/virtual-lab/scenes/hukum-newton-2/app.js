@@ -351,16 +351,20 @@ function updatePhysics(dt) {
             }
         }
         
+        const isOnGround = activeBodies.rocket.position.y >= groundY - 73;
         const weight = activeBodies.rocket.mass * 9.8; // Menggunakan g = 9.8
-        let netForce = thrust > 0 ? (thrust - weight) : (activeBodies.rocket.position.y < canvas.height - 100 ? -weight : 0);
+        
+        let netForce = thrust - weight;
+        // Jika di landasan dan gaya dorong tidak cukup untuk mengangkat, netForce = 0 (diimbangi gaya normal)
+        if (isOnGround && netForce <= 0) netForce = 0;
+        
         let a = netForce / activeBodies.rocket.mass;
         let v = -activeBodies.rocket.velocity.y * 2;
         
+        // Update dashboard nilai fisika
         netForceValue.textContent = Math.abs(netForce).toFixed(1);
         accelValue.textContent = a.toFixed(2);
         velValue.textContent = v.toFixed(2);
-        
-        const isOnGround = activeBodies.rocket.position.y >= groundY - 73;
         if (activeBodies.launchInitiated && isOnGround) activeBodies.rocketLaunchTime += dt;
         
         let msg = "";
