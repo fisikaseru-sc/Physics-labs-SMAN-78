@@ -91,7 +91,8 @@ function drawArrow(x, y, length, direction, color, label, isVertical = false) {
         ctx.lineTo(x + sign * Math.max(1, actualLength - arrowHeadSize), y + arrowHeadSize/2);
     }
     ctx.fillStyle = color; ctx.fill();
-    ctx.font = '14px Inter, sans-serif'; ctx.fontWeight = 'bold'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 14px Inter, sans-serif'; ctx.textAlign = 'center';
     if (isVertical) ctx.fillText(label, x + 35, y - sign * (actualLength / 2));
     else ctx.fillText(label, x + sign * (actualLength / 2), y - arrowHeadSize - 5);
 }
@@ -177,8 +178,9 @@ function drawTruckObj(x, y, angle) {
 
 function drawTugBox(x, y, angle) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
-    ctx.fillStyle = '#8b5cf6'; ctx.fillRect(-30, -30, 60, 60);
-    ctx.fillStyle = 'white'; ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.fillText("50kg", 0, 5);
+    ctx.fillStyle = '#c4b5fd'; ctx.fillRect(-30, -30, 60, 60);
+    ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 3; ctx.strokeRect(-30, -30, 60, 60);
+    ctx.fillStyle = '#1e293b'; ctx.font = 'bold 20px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.fillText("50kg", 0, 7);
     ctx.restore();
 }
 

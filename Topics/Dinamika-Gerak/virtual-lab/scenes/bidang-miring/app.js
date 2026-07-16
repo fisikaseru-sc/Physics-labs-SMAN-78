@@ -318,7 +318,7 @@ function drawScene() {
     } else if (scenarioSelect.value === 'searah' || scenarioSelect.value === 'berlawanan' || scenarioSelect.value === 'gesekan') {
         // Draw distance markers with clean integers
         const maxDist = Math.floor((canvas.width / 2) / SCALE - (box.width / 2));
-        ctx.fillStyle = '#e2e8f0';
+        ctx.fillStyle = '#1e293b';
         ctx.font = 'bold 13px Inter, sans-serif';
         ctx.textAlign = 'center';
 
@@ -371,7 +371,7 @@ function drawScene() {
         ctx.arc(boxPixelX, boxPixelY + boxPixelH/2, 12, 0, Math.PI * 2);
         ctx.fill();
     } else {
-        ctx.fillStyle = '#1e293b';
+        ctx.fillStyle = '#cbd5e1';
         ctx.fillRect(boxPixelX - boxPixelW/2, boxPixelY, boxPixelW, boxPixelH);
         ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 4;
@@ -413,14 +413,10 @@ function drawScene() {
         }
     }
 
-    // Label Mass ditaruh di tempat yang aman (tidak tumpang tindih)
-    ctx.fillStyle = 'white';
+    // Label Mass ditaruh di tempat yang aman
+    ctx.fillStyle = '#1e293b';
     ctx.font = 'bold 18px Inter, sans-serif';
     ctx.textAlign = 'center';
-    
-    // Tambahkan bayangan agar teks massa menonjol
-    ctx.shadowColor = "rgba(0,0,0,0.8)";
-    ctx.shadowBlur = 4;
     
     if (scenario === 'tariktambang' || drawShape === 'rope') {
         ctx.fillText(`${box.mass} kg`, boxPixelX, boxPixelY + boxPixelH/2 - 25);
@@ -431,8 +427,6 @@ function drawScene() {
     } else {
         ctx.fillText(`${box.mass} kg`, boxPixelX, boxPixelY + boxPixelH/2);
     }
-    
-    ctx.shadowBlur = 0; // Reset bayangan
     
     // Forces Vectors (Disusun lebih rendah dan rapat agar tidak nabrak panel atas)
     let yForceBase = boxPixelY - 30; 
