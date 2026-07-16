@@ -294,6 +294,7 @@ function buildScenario() {
         
         World.add(world, [activeBodies.car, activeBodies.box]);
         activeBodies.braking = false;
+        activeBodies.hasBraked = false;
     }
     else if (currentScenario === 'race') {
         engine.gravity.y = 0; // Top-Down view (no vertical gravity)
@@ -503,14 +504,17 @@ function drawScene() {
         ctx.beginPath(); ctx.roundRect(-20, -15, 40, 30, 4); ctx.fill();
         ctx.restore();
         
-        if (activeBodies.braking && activeBodies.box.velocity.x > activeBodies.car.velocity.x) {
+        if (activeBodies.hasBraked) {
             let mBox = 50; // Massa kotak
             let aCar = 5; // Perlambatan mobil asumsi m/s^2
             let fInersia = mBox * aCar; // 250 N
             let fGesek = 0.3 * mBox * 9.8; // Mu * N = 147 N
             
-            drawArrow(activeBodies.box.position.x + 20, activeBodies.box.position.y - 30, 80, 'positive', '#ef4444', `Gaya Inersia: ${fInersia} N`);
-            drawArrow(activeBodies.box.position.x - 20, activeBodies.box.position.y + 35, 60, 'negative', '#f59e0b', `Gaya Gesek: ${fGesek.toFixed(0)} N`);
+            // Panah hanya muncul saat kotak masih terlempar meluncur ke depan
+            if (activeBodies.box.velocity.x > activeBodies.car.velocity.x && activeBodies.box.velocity.x > 0.1) {
+                drawArrow(activeBodies.box.position.x + 20, activeBodies.box.position.y - 30, 80, 'positive', '#ef4444', `Gaya Inersia: ${fInersia} N`);
+                drawArrow(activeBodies.box.position.x - 20, activeBodies.box.position.y + 35, 60, 'negative', '#f59e0b', `Gaya Gesek: ${fGesek.toFixed(0)} N`);
+            }
             
             ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
             ctx.beginPath(); ctx.roundRect(activeBodies.box.position.x - 100, activeBodies.box.position.y - 120, 250, 60, 8); ctx.fill();
@@ -635,7 +639,10 @@ btnLaunch.addEventListener('click', () => {
 });
 
 btnBrake.addEventListener('click', () => {
-    if(activeBodies.car) activeBodies.braking = true;
+    if(activeBodies.car) {
+        activeBodies.braking = true;
+        activeBodies.hasBraked = true;
+    }
     if(!isPlaying) btnPlayPause.click();
 });
 
