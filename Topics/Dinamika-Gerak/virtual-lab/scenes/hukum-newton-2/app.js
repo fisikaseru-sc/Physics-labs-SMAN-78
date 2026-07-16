@@ -280,7 +280,8 @@ function buildScenario() {
         engine.gravity.scale = 0.01; // 10x visual scale for rocket to accelerate nicely
         // Match visual dimensions of the SpaceX rocket perfectly (width 30, height 145)
         activeBodies.rocket = Bodies.rectangle(logicalWidth/2, groundY - 72.5, 30, 145, { mass: 100, frictionAir: 0.002, friction: 0.5, restitution: 0 });
-        World.add(world, activeBodies.rocket);
+        activeBodies.moon = Bodies.circle(logicalWidth/2, -2500, 40, { isStatic: true, friction: 0.8 });
+        World.add(world, [activeBodies.rocket, activeBodies.moon]);
         activeBodies.isThrusting = false;
         activeBodies.launchInitiated = false;
         activeBodies.rocketLaunchTime = 0;
@@ -288,8 +289,9 @@ function buildScenario() {
     }
     else if (currentScenario === 'braking') {
         engine.gravity.scale = 0.001; // default
-        activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.01 });
-        activeBodies.box = Bodies.rectangle(logicalWidth/2 - 150, groundY - 75, 40, 30, { mass: 50, friction: 0.3 }); // Mu=0.3
+        // Set frictionAir to 0 so the car and box move at 100% constant speed before braking
+        activeBodies.car = Bodies.rectangle(logicalWidth/2 - 150, groundY - 30, 140, 60, { mass: 1000, friction: 0.01, frictionAir: 0 });
+        activeBodies.box = Bodies.rectangle(logicalWidth/2 - 150, groundY - 75, 40, 30, { mass: 50, friction: 0.3, frictionAir: 0 });
         
         let startSpeed = parseFloat(carSpeed.value) || 15;
         // Need to scale speed to Matter.js units (~0.1 of actual meter/s)
@@ -437,7 +439,28 @@ function updatePhysics(dt) {
         checkStop(activeBodies.car, activeBodies.car.position.x > 2000, "🏁 Balapan Selesai: Mobil Sport menang!");
         if (isPlaying) checkStop(activeBodies.truck, activeBodies.truck.position.x > 2000, "🏁 Balapan Selesai: Truk menang!");
     } else if (currentScenario === 'rocket') {
-        checkStop(activeBodies.rocket, activeBodies.rocket.position.y < -3000, "🚀 Simulasi Selesai: Roket berhasil mencapai orbit angkasa luar!");
+        const moonBody = activeBodies.moon;
+        const r = activeBodies.rocket;
+        if (moonBody && r) {
+            let dist = Math.hypot(r.position.x - moonBody.position.x, r.position.y - moonBody.position.y);
+            if (dist < 118) {
+                if (activeBodies.simVelocity <= 8.0) {
+                    checkStop(r, true, "🌕 Pendaratan Sukses! Selamat, roket telah mendarat dengan aman di Bulan!");
+                } else {
+                    for (let i = 0; i < 40; i++) {
+                        particles.push({
+                            x: r.position.x + (Math.random() * 20 - 10),
+                            y: r.position.y - 50 + (Math.random() * 60 - 30),
+                            vx: (Math.random() * 12 - 6),
+                            vy: (Math.random() * 12 - 6),
+                            life: 1.0,
+                            color: Math.random() > 0.3 ? '#f97316' : '#ef4444'
+                        });
+                    }
+                    checkStop(r, true, "💥 Pendaratan Gagal: Roket menabrak Bulan terlalu kencang! Ulangi simulasi.");
+                }
+            }
+        }
         
         // Logika validasi roket gagal meluncur jika di landasan > 3 detik setelah dinyalakan dan a <= 0
         const thrust = activeBodies.isThrusting ? (parseFloat(rocketThrust.value) || 0) : 0;
@@ -742,8 +765,9 @@ function simulationLoop(timestamp) {
     }
     
     // Smooth camera transition (lerp)
-    cameraX += (targetCameraX - cameraX) * 0.08;
-    cameraY += (targetCameraY - cameraY) * 0.08;
+    const lerpFactor = currentScenario === 'rocket' ? 0.25 : 0.08;
+    cameraX += (targetCameraX - cameraX) * lerpFactor;
+    cameraY += (targetCameraY - cameraY) * lerpFactor;
     
     if (mouseConstraint && mouseConstraint.mouse) {
         Matter.Mouse.setOffset(mouseConstraint.mouse, { x: cameraX, y: cameraY });
