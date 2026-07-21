@@ -617,11 +617,14 @@ function updatePhysics(dt) {
     const maxDist = (canvas.width / 2) / SCALE - 0.8;
     if (box.x >= maxDist || box.x <= -maxDist) {
       box.x = Math.sign(box.x) * maxDist;
+      pushChart(elapsedTime, box.velocity, ghostBox.velocity);
       box.velocity = 0;
       isPlaying = false;
       btnPlayPause.textContent = "Mulai Simulasi";
       btnPlayPause.style.backgroundColor = "";
       toggleInputs(false);
+      updatePhysicsState();
+      return;
     }
   }
 
