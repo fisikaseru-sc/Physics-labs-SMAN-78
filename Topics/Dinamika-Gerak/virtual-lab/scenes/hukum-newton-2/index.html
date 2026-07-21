@@ -1,188 +1,321 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lab Virtual: Dinamika Gerak</title>
-    <link rel="icon" type="image/jpeg" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../../css/style.css">
-</head>
+    <link
+      rel="icon"
+      type="image/jpeg"
+      href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../css/style.css" />
+  </head>
 
-<body>
+  <body>
     <div class="app-container">
-        <!-- HEADER -->
-        <header>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg" alt="Logo SMAN 78" style="height: 50px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-                <div class="header-text">
-                    <h1>Pertemuan 2 <span>Virtual Lab</span></h1>
-                    <p>Hukum II Newton & Hukum III Newton (Aksi-Reaksi)</p>
-                </div>
+      <!-- HEADER -->
+      <header>
+        <div style="display: flex; align-items: center; gap: 15px">
+          <img
+            src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
+            alt="Logo SMAN 78"
+            style="
+              height: 50px;
+              border-radius: 50%;
+              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            "
+          />
+          <div class="header-text">
+            <h1>Pertemuan 2 <span>Virtual Lab</span></h1>
+            <p>Hukum II Newton & Hukum III Newton (Aksi-Reaksi)</p>
+          </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="nav-tabs">
+          <a
+            href="../../index.html"
+            class="tab-btn"
+            style="text-decoration: none"
+          >
+            <span>🏠</span>
+            <strong>Beranda</strong>
+          </a>
+          <div class="tab-btn active" id="tabP2">
+            <span>2️⃣</span>
+            <strong>Hukum II & III Newton</strong>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <!-- LEFT: SIMULATION -->
+        <div class="simulation-area">
+          <div id="overlayStats" class="overlay-stats">
+            <div class="stat-box" id="statVel">
+              <span class="label">Kecepatan (v)</span>
+              <div>
+                <span class="value" id="velValue">0.00</span>
+                <span class="unit">m/s</span>
+              </div>
             </div>
-
-            <!-- TABS -->
-            <div class="nav-tabs">
-                <a href="../../index.html" class="tab-btn" style="text-decoration: none;">
-                    <span>🏠</span>
-                    <strong>Beranda</strong>
-                </a>
-                <div class="tab-btn active" id="tabP2">
-                    <span>2️⃣</span>
-                    <strong>Hukum II & III Newton</strong>
-                </div>
+            <div class="stat-box" id="statAccel">
+              <span class="label">Percepatan (a)</span>
+              <div>
+                <span class="value" id="accelValue">0.00</span>
+                <span class="unit">m/s²</span>
+              </div>
             </div>
-        </header>
-
-        <main>
-            <!-- LEFT: SIMULATION -->
-            <div class="simulation-area">
-                <div id="overlayStats" class="overlay-stats">
-                    <div class="stat-box" id="statVel">
-                        <span class="label">Kecepatan (v)</span>
-                        <div><span class="value" id="velValue">0.00</span> <span class="unit">m/s</span></div>
-                    </div>
-                    <div class="stat-box" id="statAccel">
-                        <span class="label">Percepatan (a)</span>
-                        <div><span class="value" id="accelValue">0.00</span> <span class="unit">m/s²</span></div>
-                    </div>
-                    <div class="stat-box" id="statForce">
-                        <span class="label">Resultan Gaya (ΣF)</span>
-                        <div><span class="value" id="netForceValue">0</span> <span class="unit">N</span></div>
-                    </div>
-                    <div class="stat-box time-box" id="statTime">
-                        <span class="label">Waktu (t)</span>
-                        <div><span class="value" id="timeValue">0.00</span> <span class="unit">s</span></div>
-                    </div>
-                </div>
-
-                <div class="simulation-container glass-panel">
-                    <canvas id="simCanvas"></canvas>
-                    <div class="status-message" id="statusMessage">
-                        Benda Diam (Resultan Gaya = 0)
-                    </div>
-                </div>
+            <div class="stat-box" id="statForce">
+              <span class="label">Resultan Gaya (ΣF)</span>
+              <div>
+                <span class="value" id="netForceValue">0</span>
+                <span class="unit">N</span>
+              </div>
             </div>
+            <div class="stat-box time-box" id="statTime">
+              <span class="label">Waktu (t)</span>
+              <div>
+                <span class="value" id="timeValue">0.00</span>
+                <span class="unit">s</span>
+              </div>
+            </div>
+          </div>
 
-            <!-- KONTROL DI BAWAH KANVAS -->
-            <aside class="controls-panel glass-panel">
-                <h2>Panel Eksperimen</h2>
+          <div class="simulation-container glass-panel">
+            <canvas id="simCanvas"></canvas>
+            <div class="status-message" id="statusMessage">
+              Benda Diam (Resultan Gaya = 0)
+            </div>
+          </div>
+        </div>
 
-                <div class="control-group">
-                    <label>Pilih Kasus Pembelajaran</label>
-                    <select id="scenarioSelect" class="styled-select">
-                        <option value="trolley">🛒 Troli Belanja (Hukum II Newton)</option>
-                        <option value="race">🏎️ Mobil Sport vs Truk (Hukum II Newton)</option>
-                        <option value="rocket">🚀 Peluncuran Roket (Aksi-Reaksi)</option>
-                        <option value="braking">🛑 Mobil Rem Mendadak (Inersia)</option>
-                    </select>
-                </div>
+        <!-- KONTROL DI BAWAH KANVAS -->
+        <aside class="controls-panel glass-panel">
+          <h2>Panel Eksperimen</h2>
 
-                <!-- KONTROL TROLI -->
-                <div id="trolleyControls" class="scenario-controls mt-10">
-                    <div class="control-group mt-10">
-                        <label>Massa Troli (kg)</label>
-                        <div class="input-row">
-                            <input type="number" id="trolleyMassInput" min="10" max="500" value="50" class="number-input">
-                        </div>
-                    </div>
-                    <div class="control-group mt-10">
-                        <label>Gaya Dorong (N)</label>
-                        <div class="input-row">
-                            <input type="number" id="trolleyForce" min="0" value="100" class="number-input">
-                        </div>
-                    </div>
-                </div>
+          <div class="control-group">
+            <label>Pilih Kasus Pembelajaran</label>
+            <select id="scenarioSelect" class="styled-select">
+              <option value="trolley">
+                🛒 Troli Belanja (Hukum II Newton)
+              </option>
+              <option value="race">
+                🏎️ Mobil Sport vs Truk (Hukum II Newton)
+              </option>
+              <option value="rocket">🚀 Peluncuran Roket (Aksi-Reaksi)</option>
+              <option value="braking">🛑 Mobil Rem Mendadak (Inersia)</option>
+            </select>
+          </div>
 
-                <!-- KONTROL BALAPAN (RACE) -->
-                <div id="raceControls" class="scenario-controls mt-10" style="display: none;">
-                    <div class="info-text mb-10" style="display:block;">Bandingkan percepatan dua kendaraan dengan gaya
-                        mesin yang sama. Mobil Sport (1.000 kg).</div>
-                    <div class="control-group mt-10">
-                        <label>Massa Truk (kg)</label>
-                        <div class="input-row">
-                            <input type="number" id="truckMass" min="1000" value="5000" step="500" class="number-input">
-                        </div>
-                    </div>
-                    <div class="control-group mt-10">
-                        <label>Gaya Mesin (N)</label>
-                        <div class="input-row">
-                            <input type="number" id="raceForce" min="1000" value="5000" step="1000"
-                                class="number-input">
-                        </div>
-                    </div>
-                </div>
+          <!-- KONTROL TROLI -->
+          <div id="trolleyControls" class="scenario-controls mt-10">
+            <div class="control-group mt-10">
+              <label>Massa Troli (kg)</label>
+              <div class="input-row">
+                <input
+                  type="number"
+                  id="trolleyMassInput"
+                  min="10"
+                  max="500"
+                  value="50"
+                  class="number-input"
+                />
+              </div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Gaya Dorong (N)</label>
+              <div class="input-row">
+                <input
+                  type="number"
+                  id="trolleyForce"
+                  min="0"
+                  value="100"
+                  class="number-input"
+                />
+              </div>
+            </div>
+          </div>
 
-                <!-- KONTROL ROKET -->
-                <div id="rocketControls" class="scenario-controls mt-10" style="display: none;">
-                    <div class="control-group mt-10">
-                        <label>Daya Mesin / Gaya Dorong (N)</label>
-                        <div class="input-row">
-                            <input type="number" id="rocketThrust" min="0" value="1500" step="100" class="number-input">
-                        </div>
-                        <span class="info-text mt-5" style="display:block; color: #60a5fa;">*Massa roket = 100 kg. Berat
-                            = 980 N (Asumsi g=9.8). Butuh Gaya Dorong > 980 N untuk bisa terbang!</span>
-                    </div>
-                    <div class="control-group mt-10">
-                        <button id="btnLaunch" class="btn primary"
-                            style="width: 100%; font-size: 1.1rem; padding: 12px;">🚀 LUNCURKAN!</button>
-                    </div>
-                </div>
+          <!-- KONTROL BALAPAN (RACE) -->
+          <div
+            id="raceControls"
+            class="scenario-controls mt-10"
+            style="display: none"
+          >
+            <div class="info-text mb-10" style="display: block">
+              Bandingkan percepatan dua kendaraan dengan gaya mesin yang sama.
+              Mobil Sport (1.000 kg).
+            </div>
+            <div class="control-group mt-10">
+              <label>Massa Truk (kg)</label>
+              <div class="input-row">
+                <input
+                  type="number"
+                  id="truckMass"
+                  min="1000"
+                  value="5000"
+                  step="500"
+                  class="number-input"
+                />
+              </div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Gaya Mesin (N)</label>
+              <div class="input-row">
+                <input
+                  type="number"
+                  id="raceForce"
+                  min="1000"
+                  value="5000"
+                  step="1000"
+                  class="number-input"
+                />
+              </div>
+            </div>
+          </div>
 
-                <!-- KONTROL MOBIL REM -->
-                <div id="brakingControls" class="scenario-controls mt-10" style="display: none;">
-                    <div class="info-text mb-10" style="display:block;">Mobil melaju konstan membawa kotak yang tidak
-                        diikat.</div>
-                    <div class="control-group mt-10">
-                        <label>Kecepatan Awal (m/s)</label>
-                        <div class="input-row">
-                            <input type="number" id="carSpeed" min="0" max="40" value="15" class="number-input">
-                        </div>
-                        <span class="info-text mt-5" style="display:block; color: #60a5fa;">*Batas kecepatan: 0 s.d 40 m/s</span>
-                    </div>
-                    <div class="control-group mt-10">
-                        <label>Jenis Kendaraan</label>
-                        <select id="brakingVehicleSelect" class="styled-select">
-                            <option value="family">🚗 Mobil Keluarga (1200 kg)</option>
-                            <option value="sports">🏎️ Supercar (1500 kg)</option>
-                            <option value="truck">🚚 Truk (8000 kg)</option>
-                        </select>
-                    </div>
-                    <div class="control-group mt-10">
-                        <button id="btnBrake" class="btn"
-                            style="width: 100%; font-size: 1.1rem; padding: 12px; background: #ef4444; color: white;">🛑
-                            REM MENDADAK!</button>
-                    </div>
-                </div>
+          <!-- KONTROL ROKET -->
+          <div
+            id="rocketControls"
+            class="scenario-controls mt-10"
+            style="display: none"
+          >
+            <div class="control-group mt-10">
+              <label>Daya Mesin / Gaya Dorong (N)</label>
+              <div class="input-row">
+                <input
+                  type="number"
+                  id="rocketThrust"
+                  min="0"
+                  value="1500"
+                  step="100"
+                  class="number-input"
+                />
+              </div>
+              <span
+                class="info-text mt-5"
+                style="display: block; color: #60a5fa"
+                >*Massa roket = 100 kg. Berat = 980 N (Asumsi g=9.8). Butuh Gaya
+                Dorong > 980 N untuk bisa terbang!</span
+              >
+            </div>
+            <div class="control-group mt-10">
+              <button
+                id="btnLaunch"
+                class="btn primary"
+                style="width: 100%; font-size: 1.1rem; padding: 12px"
+              >
+                🚀 LUNCURKAN!
+              </button>
+            </div>
+          </div>
 
-                <div class="control-group mt-10">
-                    <label>Kecepatan Jalur Waktu</label>
-                    <div class="button-row">
-                        <button id="btnSpeed1" class="btn secondary active" style="flex: 1; padding: 6px;">1x</button>
-                        <button id="btnSpeed05" class="btn secondary" style="flex: 1; padding: 6px;">0.5x</button>
-                        <button id="btnSpeed025" class="btn secondary" style="flex: 1; padding: 6px;">0.25x</button>
-                    </div>
-                </div>
+          <!-- KONTROL MOBIL REM -->
+          <div
+            id="brakingControls"
+            class="scenario-controls mt-10"
+            style="display: none"
+          >
+            <div class="info-text mb-10" style="display: block">
+              Mobil melaju konstan membawa kotak yang tidak diikat.
+            </div>
+            <div class="control-group mt-10">
+              <label>Kecepatan Awal (m/s)</label>
+              <div class="input-row">
+                <input
+                  type="number"
+                  id="carSpeed"
+                  min="0"
+                  max="40"
+                  value="15"
+                  class="number-input"
+                />
+              </div>
+              <span
+                class="info-text mt-5"
+                style="display: block; color: #60a5fa"
+                >*Batas kecepatan: 0 s.d 40 m/s</span
+              >
+            </div>
+            <div class="control-group mt-10">
+              <label>Jenis Kendaraan</label>
+              <select id="brakingVehicleSelect" class="styled-select">
+                <option value="family">🚗 Mobil Keluarga (1200 kg)</option>
+                <option value="sports">🏎️ Supercar (1500 kg)</option>
+                <option value="truck">🚚 Truk (8000 kg)</option>
+              </select>
+            </div>
+            <div class="control-group mt-10">
+              <button
+                id="btnBrake"
+                class="btn"
+                style="
+                  width: 100%;
+                  font-size: 1.1rem;
+                  padding: 12px;
+                  background: #ef4444;
+                  color: white;
+                "
+              >
+                🛑 REM MENDADAK!
+              </button>
+            </div>
+          </div>
 
-                <div class="control-group mt-10">
-                    <label>Kontrol Waktu</label>
-                    <div class="button-row">
-                        <button id="btnPlayPause" class="btn primary">Mulai Simulasi</button>
-                        <button id="btnReset" class="btn secondary">Ulangi</button>
-                    </div>
-                </div>
+          <div class="control-group mt-10">
+            <label>Kecepatan Jalur Waktu</label>
+            <div class="button-row">
+              <button
+                id="btnSpeed1"
+                class="btn secondary active"
+                style="flex: 1; padding: 6px"
+              >
+                1x
+              </button>
+              <button
+                id="btnSpeed05"
+                class="btn secondary"
+                style="flex: 1; padding: 6px"
+              >
+                0.5x
+              </button>
+              <button
+                id="btnSpeed025"
+                class="btn secondary"
+                style="flex: 1; padding: 6px"
+              >
+                0.25x
+              </button>
+            </div>
+          </div>
 
-                <div class="instruction-box">
-                    <strong>Kesimpulan Fisika:</strong>
-                    <span id="conclusionText">Ubah gaya untuk melihat efeknya terhadap benda.</span>
-                </div>
-            </aside>
-        </main>
+          <div class="control-group mt-10">
+            <label>Kontrol Waktu</label>
+            <div class="button-row">
+              <button id="btnPlayPause" class="btn primary">
+                Mulai Simulasi
+              </button>
+              <button id="btnReset" class="btn secondary">Ulangi</button>
+            </div>
+          </div>
+
+          <div class="instruction-box">
+            <strong>Kesimpulan Fisika:</strong>
+            <span id="conclusionText"
+              >Ubah gaya untuk melihat efeknya terhadap benda.</span
+            >
+          </div>
+        </aside>
+      </main>
     </div>
 
-    <script src="../../assets/lib/matter.min.js"></script>
+    <script src="../../../../../shared/lib/matter.min.js"></script>
     <script src="app.js"></script>
-</body>
-
+  </body>
 </html>
