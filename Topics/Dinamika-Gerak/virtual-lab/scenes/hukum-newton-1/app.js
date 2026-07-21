@@ -167,7 +167,7 @@ function updateStatusMessage(netForce) {
     if (scenario === "tariktambang") {
       conclusionText.textContent = "Tarik tambang seimbang (ΣF = 0). Gaya tarik kiri = kanan → tali tetap diam.";
     } else if (scenario === "gesekan") {
-      conclusionText.textContent = `Gaya dorong (${Math.abs(fApp).toFixed(0)} N) ≤ Gaya gesek maks (${frictionLimit} N). Gaya gesek statis bekerja sebesar ${Math.abs(fFric).toFixed(0)} N → ΣF = 0 (Benda tetap diam).`;
+      conclusionText.textContent = `Gaya dorong (F_dorong = ${Math.abs(fApp).toFixed(0)} N) ≤ Gaya gesek maks (f_s max = ${frictionLimit} N). Gaya gesek statis bekerja sebesar f_s = ${Math.abs(fFric).toFixed(0)} N → ΣF = 0 N (Benda tetap diam).`;
     } else if (scenario === "berlawanan") {
       conclusionText.textContent = "Dua gaya berlawanan sama besar → saling meniadakan (ΣF = 0). Benda tetap diam!";
     } else {
@@ -189,7 +189,7 @@ function updateStatusMessage(netForce) {
     } else if (scenario === "berlawanan") {
       conclusionText.textContent = `Gaya tidak seimbang: ΣF = ${netForce.toFixed(1)} N → a = ${box.acceleration.toFixed(2)} m/s². Benda bergerak ke arah gaya dominan.`;
     } else if (scenario === "gesekan") {
-      conclusionText.textContent = `Gaya dorong (${Math.abs(fApp).toFixed(0)} N) > Gaya gesek (${frictionLimit} N) → Resultan Gaya ΣF = ${netForce.toFixed(1)} N → a = ${box.acceleration.toFixed(2)} m/s². Meja meluncur dipercepat!`;
+      conclusionText.textContent = `Gaya dorong F_dorong (${Math.abs(fApp).toFixed(0)} N) > Gaya gesek f_k (${frictionLimit} N) → Resultan Gaya ΣF = F_dorong − f_k = ${netForce.toFixed(1)} N → a = ${box.acceleration.toFixed(2)} m/s². Meja meluncur dipercepat!`;
     } else {
       conclusionText.textContent = `Resultan gaya ΣF = ${netForce.toFixed(1)} N ≠ 0 → Kecepatan berubah (a = ${box.acceleration.toFixed(2)} m/s²).`;
     }
@@ -197,7 +197,7 @@ function updateStatusMessage(netForce) {
 }
 
 // ===== DRAW UTILS =====
-function drawArrow(x, y, length, direction, color, label) {
+function drawArrow(x, y, length, direction, color, label, textBelow = false) {
   if (length === 0) return;
   const sign = direction === "right" ? 1 : -1;
   const ah = 14, len = Math.max(20, Math.abs(length));
@@ -215,11 +215,11 @@ function drawArrow(x, y, length, direction, color, label) {
   ctx.fillStyle = color; ctx.fill();
 
   if (label) {
-    const textY = Math.max(18, y - ah - 5);
+    const textY = textBelow ? y + ah + 13 : Math.max(18, y - ah - 5);
     ctx.font = "bold 13px Inter, sans-serif";
     ctx.textAlign = "center";
 
-    // High-contrast white stroke around text so yellow/orange labels are 100% clear and visible
+    // High-contrast white stroke around text so yellow/orange/purple labels are 100% clear and visible
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 4;
     ctx.lineJoin = "round";
@@ -464,7 +464,6 @@ function drawScene() {
   const isCar = drawShape === "car";
   let boxPixelX;
   if (isCar) {
-    // Car advances smoothly across canvas from left to right
     const trackWidth = Math.max(300, canvas.width - 200);
     boxPixelX = 100 + ((box.x * SCALE * 0.6) % trackWidth);
   } else {
@@ -552,14 +551,19 @@ function drawScene() {
     const lbl = scenario === "tariktambang" ? `Tarik Kanan: ${forces.f2}N` : `F2: ${forces.f2}N`;
     drawArrow(xStart, Math.max(25, yForceBase - 36), forces.f2 * PIXELS_PER_NEWTON, forces.dir2, "#10b981", lbl);
   }
+
+  // Friction force arrow — drawn BELOW floor surface (centerY + 16) with text below arrow so it NEVER overlaps or blocks the object!
   const frictionLimit = Math.max(0, parseFloat(frictionForceInput.value) || 0);
   if (Math.abs(fFric) > 0.01) {
     const fDir = fFric > 0 ? "right" : "left";
     const xStart = fDir === "right" ? boxPixelX - boxW/2 : boxPixelX + boxW/2;
-    const fricLbl = (Math.abs(box.velocity) < 0.001 && frictionLimit > Math.abs(fFric))
-      ? `f_gesek: ${Math.abs(fFric).toFixed(0)}N (Maks ${frictionLimit}N)`
-      : `f_gesek: ${Math.abs(fFric).toFixed(0)}N`;
-    drawArrow(xStart, centerY - 18, Math.abs(fFric) * PIXELS_PER_NEWTON, fDir, "#8b5cf6", fricLbl);
+    const isStatic = Math.abs(box.velocity) < 0.001;
+    const fricLbl = (isStatic && frictionLimit > Math.abs(fFric))
+      ? `f_s: ${Math.abs(fFric).toFixed(0)} N (maks ${frictionLimit} N)`
+      : isStatic
+      ? `f_s: ${Math.abs(fFric).toFixed(0)} N`
+      : `f_k: ${Math.abs(fFric).toFixed(0)} N`;
+    drawArrow(xStart, centerY + 16, Math.abs(fFric) * PIXELS_PER_NEWTON, fDir, "#8b5cf6", fricLbl, true);
   }
 
   // Net force arrow — ensure it's always high-contrast & visible
