@@ -3,286 +3,255 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lab Virtual: Dinamika Gerak</title>
-    <link
-      rel="icon"
-      type="image/jpeg"
-      href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <title>Pertemuan 1: Hukum I Newton — Virtual Lab SMAN 78</title>
+    <meta name="description" content="Lab Virtual Hukum I Newton — Benda Diam Tetap Diam, Benda Bergerak Tetap Bergerak. Eksplorasi ΣF = 0. SMAN 78 Jakarta." />
+    <link rel="icon" type="image/jpeg" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../../css/style.css" />
+    <style>
+      /* Chart panel (same pattern as P2-7) */
+      .chart-panel {
+        background: var(--panel-bg);
+        backdrop-filter: blur(var(--glass-blur));
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-top: 10px;
+      }
+      .chart-panel h3 {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+      .chart-wrapper { position: relative; height: 130px; }
+
+      /* Space / no-friction badge */
+      .badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+      .badge-space { background: #1e3a5f; color: #93c5fd; }
+      .badge-static { background: #f59e0b22; color: #d97706; }
+      .badge-moving { background: #10b98122; color: #059669; }
+      .badge-accel  { background: #3b82f622; color: #2563eb; }
+
+      /* Compare toggle */
+      .compare-btn {
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--panel-border);
+        background: rgba(255,255,255,0.5);
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        transition: all 0.2s;
+        width: 100%;
+        text-align: left;
+      }
+      .compare-btn.active {
+        background: #8b5cf6;
+        color: #fff;
+        border-color: #8b5cf6;
+      }
+    </style>
   </head>
   <body>
     <div class="app-container">
-      <header
-        class="glass-panel"
-        style="
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        "
-      >
-        <div style="display: flex; align-items: center; gap: 15px">
+      <!-- HEADER -->
+      <header class="glass-panel" style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:15px">
           <img
             src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
             alt="Logo SMAN 78"
-            style="
-              height: 50px;
-              border-radius: 50%;
-              box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            "
+            style="height:50px;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,0.2);"
           />
           <div class="header-text">
-            <h1>Dinamika Gerak <span>Virtual Lab</span></h1>
-            <p>Eksplorasi Konsep Fisika SMA</p>
+            <h1>Pertemuan 1 <span>Virtual Lab</span></h1>
+            <p>Hukum I Newton — Inersia &amp; Kesetimbangan Gaya (ΣF = 0)</p>
           </div>
         </div>
-
-        <!-- TABS -->
         <div class="nav-tabs">
-          <a
-            href="../../index.html"
-            class="tab-btn"
-            style="text-decoration: none"
-          >
-            <span>🏠</span>
-            <strong>Beranda</strong>
+          <a href="../../index.html" class="tab-btn" style="text-decoration:none">
+            <span>🏠</span><strong>Beranda</strong>
           </a>
           <div class="tab-btn active" id="tabP1">
-            <span>1️⃣</span>
-            <strong>Hukum I Newton</strong>
+            <span>1️⃣</span><strong>Hukum I Newton</strong>
           </div>
         </div>
       </header>
 
       <main>
-        <!-- LEFT: SIMULATION -->
+        <!-- SIMULATION AREA -->
         <div class="simulation-area">
+          <!-- Stats overlay (4 boxes: v, ΣF, a, t) -->
           <div class="overlay-stats">
             <div class="stat-box">
-              <span class="label">Kecepatan Benda</span>
-              <div>
-                <span class="value" id="velValue">0.00</span>
-                <span class="unit">m/s</span>
-              </div>
+              <span class="label">Kecepatan (v)</span>
+              <div><span class="value" id="velValue">0.00</span><span class="unit">m/s</span></div>
             </div>
             <div class="stat-box">
-              <span class="label">Resultan Gaya (ΣF)</span>
-              <div>
-                <span class="value" id="netForceValue">0</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label">Resultan ΣF</span>
+              <div><span class="value" id="netForceValue">0</span><span class="unit">N</span></div>
+            </div>
+            <div class="stat-box">
+              <span class="label">Percepatan (a)</span>
+              <div><span class="value" id="accelValue">0.00</span><span class="unit">m/s²</span></div>
             </div>
             <div class="stat-box time-box">
               <span class="label">Waktu (t)</span>
-              <div>
-                <span class="value" id="timeValue">0.00</span>
-                <span class="unit">s</span>
-              </div>
+              <div><span class="value" id="timeValue">0.00</span><span class="unit">s</span></div>
             </div>
           </div>
 
+          <!-- Canvas -->
           <div class="simulation-container glass-panel">
             <canvas id="simCanvas"></canvas>
-            <div class="status-message" id="statusMessage">
-              Benda Diam (Resultan Gaya = 0)
-            </div>
+            <div class="status-message" id="statusMessage">Benda Diam (Resultan Gaya = 0)</div>
+          </div>
+
+          <!-- Chart.js panel -->
+          <div class="chart-panel">
+            <h3 id="chartTitle">Grafik Kecepatan v vs Waktu t</h3>
+            <div class="chart-wrapper"><canvas id="chartCanvas"></canvas></div>
           </div>
         </div>
 
-        <!-- KONTROL DI BAWAH KANVAS -->
+        <!-- CONTROLS PANEL -->
         <aside class="controls-panel glass-panel">
           <h2>Panel Eksperimen</h2>
 
+          <!-- Scenario select -->
           <div class="control-group">
             <label>Pilih Kasus Pembelajaran</label>
             <select id="scenarioSelect" class="styled-select">
-              <option value="custom">-- Bebas Bereksperimen --</option>
-              <option value="searah">2 Orang Mendorong Searah</option>
-              <option value="berlawanan">2 Orang Mendorong Berlawanan</option>
-              <option value="tariktambang">Tarik Tambang</option>
-              <option value="gesekan">
-                Meja Didorong Tapi Diam (Ada Gesekan)
-              </option>
-              <option value="konstan">Mobil Melaju Konstan</option>
+              <option value="custom">🧪 Bebas Bereksperimen</option>
+              <option value="searah">👥 2 Orang Mendorong Searah</option>
+              <option value="berlawanan">⚔️ 2 Orang Mendorong Berlawanan</option>
+              <option value="tariktambang">🪢 Tarik Tambang</option>
+              <option value="gesekan">🧱 Meja Didorong (Ada Gesekan)</option>
+              <option value="konstan">🚗 Mobil Melaju Konstan</option>
+              <option value="angkasa">🚀 Ruang Angkasa (Tanpa Gesekan)</option>
             </select>
           </div>
 
-          <div id="genericControls">
-            <div
-              id="customControls"
-              style="
-                display: none;
-                padding-bottom: 5px;
-                border-bottom: 1px dashed var(--panel-border);
-              "
-            >
-              <div class="control-group mt-10">
-                <label>Pilih Bentuk Objek</label>
-                <select id="customObject" class="styled-select">
-                  <option value="box">📦 Kotak Standar</option>
-                  <option value="table">🪑 Meja</option>
-                  <option value="car">🚗 Mobil</option>
-                </select>
-              </div>
-              <div class="control-group mt-10 mb-10">
-                <label>Set Kecepatan Instan (m/s)</label>
-                <div class="input-row">
-                  <input
-                    type="number"
-                    id="customVelocity"
-                    min="-20"
-                    max="20"
-                    value="0"
-                    step="0.5"
-                    class="number-input"
-                  />
-                  <button
-                    id="btnSetVelocity"
-                    class="btn secondary"
-                    style="flex: 0.5; padding: 8px"
-                  >
-                    Ubah
-                  </button>
-                </div>
-                <span class="info-text mt-5" style="display: block; color: #60a5fa;"
-                  >*Batas kecepatan: -20 s.d 20 m/s</span
-                >
-              </div>
+          <!-- Custom object selector (only for custom mode) -->
+          <div id="customControls" style="display:none;padding-bottom:5px;border-bottom:1px dashed var(--panel-border)">
+            <div class="control-group mt-10">
+              <label>Pilih Bentuk Objek</label>
+              <select id="customObject" class="styled-select">
+                <option value="box">📦 Kotak Standar</option>
+                <option value="table">🪑 Meja</option>
+                <option value="car">🚗 Mobil</option>
+              </select>
             </div>
+            <div class="control-group mt-10 mb-10">
+              <label>Set Kecepatan Awal (m/s)</label>
+              <div class="input-row">
+                <input type="number" id="customVelocity" min="-20" max="20" value="0" step="0.5" class="number-input" />
+                <button id="btnSetVelocity" class="btn secondary" style="flex:0.5;padding:8px">Ubah</button>
+              </div>
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: -20 s.d 20 m/s</span>
+            </div>
+          </div>
 
+          <!-- Generic controls (F1, F2) -->
+          <div id="genericControls">
             <div class="control-group mt-10">
               <label>Gaya Aksi 1 (N)</label>
               <div class="input-row">
-                <input
-                  type="number"
-                  id="force1"
-                  min="0"
-                  max="500"
-                  value="0"
-                  class="number-input"
-                />
+                <input type="number" id="force1" min="0" max="500" value="0" class="number-input" />
                 <select id="dir1" class="dir-select">
                   <option value="right">ke Kanan ➔</option>
                   <option value="left">ke Kiri ⬅</option>
                 </select>
               </div>
-              <span class="info-text mt-5" style="display: block; color: #60a5fa;"
-                >*Batas gaya: 0 s.d 500 N</span
-              >
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 0 s.d 500 N</span>
             </div>
-
             <div class="control-group mt-10">
               <label>Gaya Aksi 2 (N)</label>
               <div class="input-row">
-                <input
-                  type="number"
-                  id="force2"
-                  min="0"
-                  max="500"
-                  value="0"
-                  class="number-input"
-                />
+                <input type="number" id="force2" min="0" max="500" value="0" class="number-input" />
                 <select id="dir2" class="dir-select">
                   <option value="right">ke Kanan ➔</option>
                   <option value="left">ke Kiri ⬅</option>
                 </select>
               </div>
-              <span class="info-text mt-5" style="display: block; color: #60a5fa;"
-                >*Batas gaya: 0 s.d 500 N</span
-              >
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 0 s.d 500 N</span>
             </div>
           </div>
 
-          <div id="tarikTambangControls" style="display: none">
+          <!-- Tug of war controls -->
+          <div id="tarikTambangControls" style="display:none">
             <div class="control-group mt-10">
-              <label>Jumlah Orang Kiri (Tarik Kiri)</label>
+              <label>Jumlah Orang Kiri (tarik kiri)</label>
               <div class="input-row">
-                <input
-                  type="number"
-                  id="numPeopleLeft"
-                  min="0"
-                  max="5"
-                  value="3"
-                  class="number-input"
-                />
+                <input type="number" id="numPeopleLeft" min="0" max="5" value="3" class="number-input" />
               </div>
             </div>
             <div class="control-group mt-10">
-              <label>Jumlah Orang Kanan (Tarik Kanan)</label>
+              <label>Jumlah Orang Kanan (tarik kanan)</label>
               <div class="input-row">
-                <input
-                  type="number"
-                  id="numPeopleRight"
-                  min="0"
-                  max="5"
-                  value="3"
-                  class="number-input"
-                />
+                <input type="number" id="numPeopleRight" min="0" max="5" value="3" class="number-input" />
               </div>
             </div>
-            <div class="info-text mt-10" style="color: #f59e0b">
-              *1 Orang menyumbang gaya tarikan 50 N (Maks. 5 orang = 250 N)
+            <div class="info-text mt-10" style="color:#f59e0b">
+              *1 Orang = 50 N (Maks. 5 orang = 250 N)
             </div>
           </div>
 
+          <!-- Friction -->
           <div class="control-group mt-10">
             <label>Gaya Gesek Permukaan (N)</label>
             <div class="input-row">
-              <input
-                type="number"
-                id="frictionForce"
-                min="0"
-                max="500"
-                value="0"
-                class="number-input"
-              />
+              <input type="number" id="frictionForce" min="0" max="500" value="0" class="number-input" />
             </div>
-            <span class="info-text mt-5" style="display: block; color: #60a5fa;"
-              >*Batas gaya gesek: 0 s.d 500 N (Otomatis melawan arah gerak)</span
-            >
+            <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 0 s.d 500 N (otomatis melawan arah gerak)</span>
           </div>
 
+          <!-- Mass -->
           <div class="control-group mt-10">
-            <label>Massa Benda (kg)</label>
+            <label>Massa Benda m (kg)</label>
             <div class="input-row">
-              <input
-                type="number"
-                id="mass"
-                min="1"
-                max="1000"
-                value="50"
-                class="number-input"
-              />
+              <input type="number" id="mass" min="1" max="1000" value="50" class="number-input" />
             </div>
-            <span class="info-text mt-5" style="display: block; color: #60a5fa;"
-              >*Batas massa: 1 s.d 1000 kg</span
-            >
+            <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 1 s.d 1000 kg</span>
           </div>
 
+          <!-- Tanpa gesekan compare toggle -->
+          <div class="control-group mt-10" id="compareGroup" style="display:none">
+            <button class="compare-btn" id="btnCompare">
+              🔍 Bandingkan dengan Benda Ideal (Tanpa Gesekan)
+            </button>
+          </div>
+
+          <!-- Buttons -->
           <div class="control-group mt-10">
             <label>Kontrol Waktu</label>
             <div class="button-row">
-              <button id="btnPlayPause" class="btn primary">
-                Mulai Simulasi
-              </button>
+              <button id="btnPlayPause" class="btn primary">Mulai Simulasi</button>
               <button id="btnReset" class="btn secondary">Ulangi</button>
             </div>
           </div>
 
-          <div class="instruction-box">
+          <!-- Conclusion -->
+          <div class="instruction-box" style="margin-top:10px">
             <strong>Kesimpulan Fisika:</strong>
-            <span id="conclusionText"
-              >Ubah gaya untuk melihat efeknya terhadap benda.</span
-            >
+            <span id="conclusionText">Ubah gaya untuk melihat efeknya terhadap benda.</span>
           </div>
         </aside>
       </main>
     </div>
 
+    <script src="../../../../../shared/lib/chart.umd.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
