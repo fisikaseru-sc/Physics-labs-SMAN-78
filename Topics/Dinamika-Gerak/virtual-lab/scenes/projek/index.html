@@ -3,42 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pertemuan 7: Sandbox & Projek - Virtual Lab</title>
-    <link
-      rel="icon"
-      type="image/jpeg"
-      href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <title>Pertemuan 7: Sandbox Dinamika Gerak — Virtual Lab SMAN 78</title>
+    <meta name="description" content="Sandbox Interaktif Dinamika Gerak — Eksplor Gerak Proyektil, Tabrakan, Sistem Multi-Benda. SMAN 78 Jakarta." />
+    <link rel="icon" type="image/jpeg" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../../css/style.css" />
+    <style>
+      .chart-panel { background: var(--panel-bg); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--panel-border); border-radius: 12px; padding: 14px 18px; margin-top: 10px; }
+      .chart-panel h3 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 8px; }
+      .chart-wrapper { position: relative; height: 130px; }
+      .preset-btn { padding: 7px 10px; border-radius: 9px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.5); cursor: pointer; font-size: 0.75rem; font-weight: 600; color: var(--text-primary); transition: all 0.2s; flex: 1; text-align: center; }
+      .preset-btn.active, .preset-btn:hover { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
+      .scenario-controls { display: none; }
+    </style>
   </head>
   <body>
     <div class="app-container">
-      <header class="glass-panel" style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 15px">
-          <img
-            src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
-            alt="Logo SMAN 78"
-            style="height: 50px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);"
-          />
+      <header class="glass-panel" style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:15px">
+          <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg" alt="Logo SMAN 78" style="height:50px;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,0.2);" />
           <div class="header-text">
             <h1>Pertemuan 7 <span>Virtual Lab</span></h1>
-            <p>Sandbox Dinamika Gerak & Presentasi Projek</p>
+            <p>Sandbox & Projek Dinamika Gerak</p>
           </div>
         </div>
-
         <div class="nav-tabs">
-          <a href="../../index.html" class="tab-btn" style="text-decoration: none">
-            <span>🏠</span>
-            <strong>Beranda</strong>
-          </a>
-          <div class="tab-btn active">
-            <span>7️⃣</span>
-            <strong>Projek Sandbox</strong>
-          </div>
+          <a href="../../index.html" class="tab-btn" style="text-decoration:none"><span>🏠</span><strong>Beranda</strong></a>
+          <div class="tab-btn active"><span>7️⃣</span><strong>Sandbox Projek</strong></div>
         </div>
       </header>
 
@@ -46,73 +37,132 @@
         <div class="simulation-area">
           <div class="overlay-stats">
             <div class="stat-box">
-              <span class="label">Kecepatan v (vx, vy)</span>
-              <div>
-                <span class="value" id="velValue">0.00 m/s</span>
-              </div>
+              <span class="label" id="s1lbl">Kecepatan (v)</span>
+              <div><span class="value" id="velValue">0.00</span><span class="unit" id="s1unit">m/s</span></div>
             </div>
             <div class="stat-box">
-              <span class="label">Percepatan a (ax, ay)</span>
-              <div>
-                <span class="value" id="accelVal">0.00 m/s²</span>
-              </div>
+              <span class="label" id="s2lbl">Percepatan (a)</span>
+              <div><span class="value" id="accelValue">0.00</span><span class="unit" id="s2unit">m/s²</span></div>
             </div>
             <div class="stat-box">
-              <span class="label">Resultan Gaya (ΣF)</span>
-              <div>
-                <span class="value" id="netForceValue">0.0</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label" id="s3lbl">ΣF / Posisi</span>
+              <div><span class="value" id="netForceValue">0.0</span><span class="unit" id="s3unit">N</span></div>
             </div>
             <div class="stat-box time-box">
               <span class="label">Waktu (t)</span>
-              <div>
-                <span class="value" id="timeValue">0.00</span>
-                <span class="unit">s</span>
-              </div>
+              <div><span class="value" id="timeValue">0.00</span><span class="unit">s</span></div>
             </div>
           </div>
 
           <div class="simulation-container glass-panel">
             <canvas id="simCanvas"></canvas>
-            <div class="status-message" id="statusMessage">
-              Laboratorium Sandbox Siap Digunakan
-            </div>
+            <div class="status-message" id="statusMessage">Pilih Preset Projek untuk Memulai Eksperimen</div>
+          </div>
+
+          <div class="chart-panel">
+            <h3 id="chartTitle">Grafik Posisi x & y vs Waktu</h3>
+            <div class="chart-wrapper"><canvas id="chartCanvas"></canvas></div>
           </div>
         </div>
 
         <aside class="controls-panel glass-panel">
-          <h2>Panel Eksperimen Sandbox</h2>
+          <h2>Panel Projek Sandbox</h2>
 
-          <div class="control-group mt-10">
-            <label>Gaya Horizontal Fx (N)</label>
-            <div class="input-row">
-              <input type="number" id="fxInput" min="-500" max="500" value="100" class="number-input" />
+          <div class="control-group">
+            <label>Pilih Preset Projek</label>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+              <button class="preset-btn active" id="presetProjectile">🎯 Gerak Proyektil</button>
+              <button class="preset-btn" id="presetCollision">💥 Tabrakan 2 Benda</button>
+              <button class="preset-btn" id="presetSystem">⛓️ Multi-Benda</button>
+              <button class="preset-btn" id="presetFree">🧪 Bebas (Sandbox)</button>
+            </div>
+          </div>
+
+          <!-- PROJECTILE CONTROLS -->
+          <div id="projectileControls" class="scenario-controls mt-10" style="display:block">
+            <div class="control-group mt-10">
+              <label>Kecepatan Awal v₀ (m/s)</label>
+              <div class="input-row"><input type="number" id="v0Input" min="1" max="200" value="30" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Sudut Luncur θ (°)</label>
+              <div class="input-row"><input type="number" id="angleInput" min="1" max="89" value="45" class="number-input" /></div>
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*θ=45° → jarak terjauh. θ>45° → lebih tinggi, lebih dekat.</span>
+            </div>
+            <div class="control-group mt-10">
+              <label>Massa Proyektil m (kg)</label>
+              <div class="input-row"><input type="number" id="projMass" min="0.01" max="100" step="0.1" value="1" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Hambatan Udara?</label>
+              <div class="button-row">
+                <button id="btnNoAir" class="btn secondary active" style="flex:1;padding:6px">🚀 Tanpa Hambatan</button>
+                <button id="btnWithAir" class="btn secondary" style="flex:1;padding:6px">💨 Dengan Hambatan</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- COLLISION CONTROLS -->
+          <div id="collisionControls" class="scenario-controls mt-10">
+            <div class="control-group mt-10">
+              <label>Massa Benda 1 m₁ (kg)</label>
+              <div class="input-row"><input type="number" id="col_m1" min="1" max="500" value="10" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Kecepatan Awal v₁ (m/s)</label>
+              <div class="input-row"><input type="number" id="col_v1" min="1" max="100" value="20" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Massa Benda 2 m₂ (kg)</label>
+              <div class="input-row"><input type="number" id="col_m2" min="1" max="500" value="20" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Koefisien Restitusi (e)</label>
+              <div class="input-row"><input type="number" id="col_e" min="0" max="1" step="0.1" value="1" class="number-input" /></div>
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*e=1: Elastis sempurna. e=0: Tidak elastis sempurna.</span>
+            </div>
+          </div>
+
+          <!-- MULTI-BODY CONTROLS -->
+          <div id="systemControls" class="scenario-controls mt-10">
+            <div class="control-group mt-10">
+              <label>Massa Benda A mA (kg)</label>
+              <div class="input-row"><input type="number" id="sys_mA" min="1" max="200" value="10" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Massa Benda B mB (kg)</label>
+              <div class="input-row"><input type="number" id="sys_mB" min="1" max="200" value="30" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Koefisien Gesek μ</label>
+              <div class="input-row"><input type="number" id="sys_mu" min="0" max="1" step="0.05" value="0.1" class="number-input" /></div>
+            </div>
+          </div>
+
+          <!-- FREE SANDBOX CONTROLS -->
+          <div id="freeControls" class="scenario-controls mt-10">
+            <div class="control-group mt-10">
+              <label>Gaya Horizontal Fx (N)</label>
+              <div class="input-row"><input type="number" id="fxInput" min="-1000" max="1000" value="100" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Gaya Vertikal Fy (N)</label>
+              <div class="input-row"><input type="number" id="fyInput" min="-1000" max="1000" value="0" class="number-input" /></div>
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*+ = Ke Atas, – = Ke Bawah</span>
+            </div>
+            <div class="control-group mt-10">
+              <label>Massa Benda m (kg)</label>
+              <div class="input-row"><input type="number" id="freeMass" min="1" max="500" value="25" class="number-input" /></div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Koefisien Gesek μ</label>
+              <div class="input-row"><input type="number" id="freeMu" min="0" max="1" step="0.05" value="0.1" class="number-input" /></div>
             </div>
           </div>
 
           <div class="control-group mt-10">
-            <label>Gaya Vertikal Fy (N)</label>
-            <div class="input-row">
-              <input type="number" id="fyInput" min="-500" max="500" value="0" class="number-input" />
-            </div>
-            <span class="info-text mt-5" style="display: block; color: #60a5fa;">
-              *Positif = Ke Atas, Negatif = Ke Bawah
-            </span>
-          </div>
-
-          <div class="control-group mt-10">
-            <label>Massa Objek m (kg)</label>
-            <div class="input-row">
-              <input type="number" id="massInput" min="1" max="500" value="25" class="number-input" />
-            </div>
-          </div>
-
-          <div class="control-group mt-10">
-            <label>Koefisien Gesek Lantai μ</label>
-            <div class="input-row">
-              <input type="number" id="muInput" min="0" max="1" step="0.05" value="0.1" class="number-input" />
-            </div>
+            <label>Gravitasi g (m/s²)</label>
+            <div class="input-row"><input type="number" id="gravityInput" min="0" max="30" step="0.1" value="9.8" class="number-input" /></div>
           </div>
 
           <div class="control-group mt-10">
@@ -123,14 +173,15 @@
             </div>
           </div>
 
-          <div class="instruction-box">
+          <div class="instruction-box" style="margin-top:10px">
             <strong>Kesimpulan Fisika:</strong>
-            <span id="conclusionText">Ubah Fx, Fy, dan massa untuk menguji skenario gerak 2D bebas.</span>
+            <span id="conclusionText">Pilih preset projek untuk memulai eksperimen dinamika bebas.</span>
           </div>
         </aside>
       </main>
     </div>
 
+    <script src="../../../../../shared/lib/chart.umd.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

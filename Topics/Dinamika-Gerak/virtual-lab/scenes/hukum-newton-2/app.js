@@ -1,1573 +1,577 @@
-// --- INIT MATTER.JS ---
-const Engine = Matter.Engine,
-  World = Matter.World,
-  Bodies = Matter.Bodies,
-  Body = Matter.Body,
-  Composite = Matter.Composite,
-  Events = Matter.Events,
-  Mouse = Matter.Mouse,
-  MouseConstraint = Matter.MouseConstraint;
-
-const engine = Engine.create();
-const world = engine.world;
-engine.gravity.y = 1; // 1 scale gravity
-
+// ===== CANVAS & CHART =====
 const canvas = document.getElementById("simCanvas");
 const ctx = canvas.getContext("2d");
+const chartCanvas = document.getElementById("chartCanvas");
 
-// --- MOUSE INTERACTION ---
-const mouse = Mouse.create(canvas);
-const mouseConstraint = MouseConstraint.create(engine, {
-  mouse: mouse,
-  constraint: { stiffness: 0.2, render: { visible: false } },
-});
-World.add(world, mouseConstraint);
-
-// UI Elements
-const btnPlayPause = document.getElementById("btnPlayPause");
-const btnReset = document.getElementById("btnReset");
+// UI references
 const scenarioSelect = document.getElementById("scenarioSelect");
-
 const trolleyControls = document.getElementById("trolleyControls");
-const trolleyMassInput = document.getElementById("trolleyMassInput");
-const trolleyForce = document.getElementById("trolleyForce");
-
-const rocketControls = document.getElementById("rocketControls");
-const rocketThrust = document.getElementById("rocketThrust");
-const btnLaunch = document.getElementById("btnLaunch");
-
-const brakingControls = document.getElementById("brakingControls");
-const carSpeed = document.getElementById("carSpeed");
-const btnBrake = document.getElementById("btnBrake");
-const brakingVehicleSelect = document.getElementById("brakingVehicleSelect");
-
 const raceControls = document.getElementById("raceControls");
+const rocketControls = document.getElementById("rocketControls");
+const brakingControls = document.getElementById("brakingControls");
+
+const trolleyMass = document.getElementById("trolleyMass");
+const trolleyForce = document.getElementById("trolleyForce");
+const trolleyFriction = document.getElementById("trolleyFriction");
 const raceForce = document.getElementById("raceForce");
-
-const velValue = document.getElementById("velValue");
-const netForceValue = document.getElementById("netForceValue");
-const accelValue = document.getElementById("accelValue");
-const timeValue = document.getElementById("timeValue");
-const statusMessage = document.getElementById("statusMessage");
-const conclusionText = document.getElementById("conclusionText");
-
-const statForce = document.getElementById("statForce");
-const statAccel = document.getElementById("statAccel");
-const statVel = document.getElementById("statVel");
-const statTime = document.getElementById("statTime");
-
-let isPlaying = false;
-let lastTime = 0;
-let elapsedTime = 0;
-let currentScenario = "trolley";
-let particles = [];
-let activeBodies = {}; // Store references to Matter bodies
-let logicalWidth = 800;
-let logicalHeight = 600;
-let cameraX = 0;
-let cameraY = 0;
-let targetCameraX = 0;
-let targetCameraY = 0;
-let simSpeed = 1.0;
-
-const stars = [];
-for (let i = 0; i < 60; i++) {
-  stars.push({
-    x: Math.random() * 800,
-    y: Math.random() * 600,
-    size: Math.random() * 1.8 + 0.5,
-    alpha: Math.random() * 0.8 + 0.2,
-  });
-}
-
-function resizeCanvas() {
-  const container = canvas.parentElement;
-  const dpr = window.devicePixelRatio || 1;
-
-  logicalWidth = container.clientWidth;
-  logicalHeight = container.clientHeight;
-
-  canvas.width = logicalWidth * dpr;
-  canvas.height = logicalHeight * dpr;
-
-  canvas.style.width = logicalWidth + "px";
-  canvas.style.height = logicalHeight + "px";
-
-  ctx.scale(dpr, dpr);
-
-  buildScenario(); // Rebuild world on resize
-}
-window.addEventListener("resize", resizeCanvas);
-
-// --- DRAWING FUNCTIONS (CUSTOM CANVAS) ---
-function drawArrow(x, y, length, direction, color, label, isVertical = false) {
-  if (Math.abs(length) < 5) return;
-  const arrowWidth = 8;
-  const arrowHeadSize = 12;
-  const actualLength = Math.max(20, Math.abs(length));
-  const sign = direction === "positive" ? 1 : -1;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  if (isVertical)
-    ctx.lineTo(x, y - sign * Math.max(1, actualLength - arrowHeadSize));
-  else ctx.lineTo(x + sign * Math.max(1, actualLength - arrowHeadSize), y);
-  ctx.lineWidth = arrowWidth;
-  ctx.strokeStyle = color;
-  ctx.stroke();
-  ctx.beginPath();
-  if (isVertical) {
-    ctx.moveTo(
-      x - arrowHeadSize / 2,
-      y - sign * Math.max(1, actualLength - arrowHeadSize),
-    );
-    ctx.lineTo(
-      x + arrowHeadSize / 2,
-      y - sign * Math.max(1, actualLength - arrowHeadSize),
-    );
-    ctx.lineTo(x, y - sign * actualLength);
-  } else {
-    ctx.moveTo(
-      x + sign * Math.max(1, actualLength - arrowHeadSize),
-      y - arrowHeadSize / 2,
-    );
-    ctx.lineTo(x + sign * actualLength, y);
-    ctx.lineTo(
-      x + sign * Math.max(1, actualLength - arrowHeadSize),
-      y + arrowHeadSize / 2,
-    );
-  }
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.fillStyle = "#1e293b";
-  ctx.font = "bold 14px Inter, sans-serif";
-  ctx.textAlign = "center";
-  if (isVertical) ctx.fillText(label, x + 35, y - sign * (actualLength / 2));
-  else
-    ctx.fillText(label, x + sign * (actualLength / 2), y - arrowHeadSize - 5);
-}
-
-function drawTrolley(x, y, angle, mass) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.fillStyle = "#334155";
-  ctx.beginPath();
-  ctx.arc(-25, 25, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(25, 25, 8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "rgba(203, 213, 225, 0.5)";
-  ctx.beginPath();
-  ctx.moveTo(-35, -30);
-  ctx.lineTo(35, -30);
-  ctx.lineTo(25, 15);
-  ctx.lineTo(-25, 15);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = "#64748b";
-  ctx.lineWidth = 3;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-  ctx.moveTo(-35, -30);
-  ctx.lineTo(35, -30);
-  ctx.lineTo(25, 15);
-  ctx.lineTo(-25, 15);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.lineWidth = 1.5;
-  for (let i = -20; i <= 20; i += 10) {
-    ctx.beginPath();
-    ctx.moveTo(i, -30);
-    ctx.lineTo(i * 0.8, 15);
-    ctx.stroke();
-  }
-  for (let j = -20; j <= 10; j += 10) {
-    ctx.beginPath();
-    ctx.moveTo(-32 + (j + 20) * 0.1, j);
-    ctx.lineTo(32 - (j + 20) * 0.1, j);
-    ctx.stroke();
-  }
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(-35, -30);
-  ctx.lineTo(-45, -45);
-  ctx.lineTo(-55, -45);
-  ctx.stroke();
-
-  // Draw load dynamically based on mass input (base trolley is 10kg)
-  if (mass > 10) {
-    // Red box / carton
-    ctx.fillStyle = "#ef4444";
-    ctx.fillRect(-20, -20, 15, 35);
-    ctx.fillStyle = "#f87171";
-    ctx.beginPath();
-    ctx.moveTo(-20, -20);
-    ctx.lineTo(-12, -28);
-    ctx.lineTo(-5, -20);
-    ctx.fill();
-  }
-  if (mass > 40) {
-    // Blue box
-    ctx.fillStyle = "#3b82f6";
-    ctx.fillRect(0, -10, 20, 25);
-  }
-  if (mass > 100) {
-    // Emerald bag / veggies
-    ctx.fillStyle = "#10b981";
-    ctx.beginPath();
-    ctx.arc(10, -15, 10, 0, Math.PI * 2);
-    ctx.arc(15, -20, 8, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawPersonPushing(x, y) {
-  ctx.strokeStyle = "#f59e0b";
-  ctx.lineWidth = 6;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-  ctx.arc(x, y - 85, 12, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x, y - 73);
-  ctx.lineTo(x + 15, y - 35);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + 15, y - 35);
-  ctx.lineTo(x - 5, y);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + 15, y - 35);
-  ctx.lineTo(x + 30, y);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x + 5, y - 65);
-  ctx.lineTo(x + 40, y - 55);
-  ctx.stroke();
-}
-
-function drawRocketObj(x, y, angle, thrusting) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  const grad = ctx.createLinearGradient(-15, 0, 15, 0);
-  grad.addColorStop(0, "#e2e8f0");
-  grad.addColorStop(0.5, "#ffffff");
-  grad.addColorStop(1, "#94a3b8");
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.roundRect(-15, -40, 30, 100, 4);
-  ctx.fill();
-  ctx.fillStyle = "#1e293b";
-  ctx.fillRect(-16, -10, 32, 12);
-  ctx.fillStyle = "#475569";
-  ctx.fillRect(-22, -30, 7, 2);
-  ctx.fillRect(15, -30, 7, 2);
-  ctx.fillStyle = "#334155";
-  ctx.beginPath();
-  ctx.moveTo(-15, 20);
-  ctx.lineTo(-25, 60);
-  ctx.lineTo(-15, 55);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(15, 20);
-  ctx.lineTo(25, 60);
-  ctx.lineTo(15, 55);
-  ctx.fill();
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.moveTo(-15, -40);
-  ctx.bezierCurveTo(-15, -70, -5, -85, 0, -90);
-  ctx.bezierCurveTo(5, -85, 15, -70, 15, -40);
-  ctx.fill();
-  ctx.fillStyle = "#1e293b";
-  ctx.font = "bold 9px Inter, sans-serif";
-  ctx.save();
-  ctx.translate(0, 35);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillText("SPACEX", 0, 3);
-  ctx.restore();
-  ctx.fillStyle = "#0f172a";
-  ctx.beginPath();
-  ctx.moveTo(-10, 60);
-  ctx.lineTo(-14, 72);
-  ctx.lineTo(14, 72);
-  ctx.lineTo(10, 60);
-  ctx.fill();
-
-  if (thrusting) {
-    ctx.fillStyle = "#fef08a";
-    ctx.beginPath();
-    ctx.moveTo(-10, 68);
-    ctx.lineTo(0, 100 + Math.random() * 30);
-    ctx.lineTo(10, 68);
-    ctx.fill();
-    ctx.fillStyle = "rgba(249, 115, 22, 0.6)";
-    ctx.beginPath();
-    ctx.moveTo(-12, 68);
-    ctx.lineTo(0, 120 + Math.random() * 40);
-    ctx.lineTo(12, 68);
-    ctx.fill();
-  }
-
-  ctx.restore();
-}
-
-function drawCarObj(x, y, angle) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.fillStyle = "#0f172a";
-  ctx.beginPath();
-  ctx.arc(-25, 12, 10, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(25, 12, 10, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#cbd5e1";
-  ctx.beginPath();
-  ctx.arc(-25, 12, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(25, 12, 4, 0, Math.PI * 2);
-  ctx.fill();
-  const bGrad = ctx.createLinearGradient(-40, 0, 40, 0);
-  bGrad.addColorStop(0, "#2563eb");
-  bGrad.addColorStop(1, "#60a5fa");
-  ctx.fillStyle = bGrad;
-  ctx.beginPath();
-  ctx.moveTo(-45, 8);
-  ctx.lineTo(-45, -5);
-  ctx.lineTo(-30, -5);
-  ctx.lineTo(-10, -25);
-  ctx.lineTo(20, -25);
-  ctx.lineTo(40, -5);
-  ctx.lineTo(50, 0);
-  ctx.lineTo(50, 8);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#93c5fd";
-  ctx.beginPath();
-  ctx.moveTo(-25, -5);
-  ctx.lineTo(-10, -20);
-  ctx.lineTo(0, -20);
-  ctx.lineTo(0, -5);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(5, -20);
-  ctx.lineTo(20, -20);
-  ctx.lineTo(35, -5);
-  ctx.lineTo(5, -5);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawSportsCar(x, y, angle) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
-  ctx.beginPath();
-  ctx.roundRect(-38, -13, 85, 26, 8);
-  ctx.fill();
-  ctx.fillStyle = "#0f172a";
-  ctx.beginPath();
-  ctx.roundRect(-28, -16, 16, 32, 3);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.roundRect(22, -16, 14, 32, 3);
-  ctx.fill();
-  const grad = ctx.createLinearGradient(0, -15, 0, 15);
-  grad.addColorStop(0, "#ef4444");
-  grad.addColorStop(0.5, "#fca5a5");
-  grad.addColorStop(1, "#dc2626");
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.moveTo(-35, -12);
-  ctx.lineTo(25, -10);
-  ctx.bezierCurveTo(45, -8, 45, 8, 25, 10);
-  ctx.lineTo(-35, 12);
-  ctx.lineTo(-40, 0);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#1e293b";
-  ctx.beginPath();
-  ctx.moveTo(-10, -7);
-  ctx.lineTo(15, -6);
-  ctx.bezierCurveTo(25, -4, 25, 4, 15, 6);
-  ctx.lineTo(-10, 7);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#111827";
-  ctx.fillRect(-38, -10, 6, 20);
-  ctx.restore();
-}
-
-function drawTruckObj(x, y, angle) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
-  ctx.beginPath();
-  ctx.roundRect(-58, -18, 125, 36, 4);
-  ctx.fill();
-  ctx.fillStyle = "#0f172a";
-  ctx.beginPath();
-  ctx.roundRect(-50, -22, 20, 44, 3);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.roundRect(-20, -22, 20, 44, 3);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.roundRect(40, -20, 16, 40, 3);
-  ctx.fill();
-  const tGrad = ctx.createLinearGradient(0, -15, 0, 15);
-  tGrad.addColorStop(0, "#94a3b8");
-  tGrad.addColorStop(0.5, "#cbd5e1");
-  tGrad.addColorStop(1, "#64748b");
-  ctx.fillStyle = tGrad;
-  ctx.beginPath();
-  ctx.roundRect(-60, -16, 95, 32, 2);
-  ctx.fill();
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.lineWidth = 1;
-  for (let i = -50; i < 30; i += 10) {
-    ctx.beginPath();
-    ctx.moveTo(i, -15);
-    ctx.lineTo(i, 15);
-    ctx.stroke();
-  }
-  const cGrad = ctx.createLinearGradient(0, -15, 0, 15);
-  cGrad.addColorStop(0, "#f59e0b");
-  cGrad.addColorStop(0.5, "#fcd34d");
-  cGrad.addColorStop(1, "#d97706");
-  ctx.fillStyle = cGrad;
-  ctx.beginPath();
-  ctx.roundRect(35, -14, 25, 28, 6);
-  ctx.fill();
-  ctx.fillStyle = "#1e293b";
-  ctx.beginPath();
-  ctx.roundRect(50, -12, 8, 24, 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-// --- MATTER.JS SCENARIO BUILDERS ---
-function buildScenario() {
-  World.clear(world);
-  Engine.clear(engine);
-  activeBodies = {};
-  const groundY = logicalHeight - 50;
-  engine.gravity.y = 1; // Default for side-view scenarios
-
-  // Add ground with 0 friction for braking scenario (so car rolls constantly)
-  const groundFriction = currentScenario === "braking" ? 0 : 0.1;
-  const ground = Bodies.rectangle(
-    logicalWidth / 2,
-    groundY + 25,
-    logicalWidth * 3,
-    50,
-    { isStatic: true, friction: groundFriction },
-  );
-  World.add(world, ground);
-
-  if (currentScenario === "trolley") {
-    engine.gravity.scale = 0.001; // default
-    const mass = Math.max(
-      5,
-      Math.min(500, parseFloat(trolleyMassInput.value) || 50),
-    );
-    activeBodies.trolley = Bodies.rectangle(
-      logicalWidth / 2 - 100,
-      groundY - 50,
-      100,
-      80,
-      { mass: mass, friction: 0.05, restitution: 0.2, inertia: Infinity },
-    );
-    World.add(world, activeBodies.trolley);
-    activeBodies.simVelocity = 0;
-  } else if (currentScenario === "rocket") {
-    engine.gravity.y = 1; // Earth gravity
-    engine.gravity.scale = 0.01; // 10x visual scale for rocket to accelerate nicely
-    // Match visual dimensions of the SpaceX rocket perfectly (width 30, height 145)
-    activeBodies.rocket = Bodies.rectangle(
-      logicalWidth / 2,
-      groundY - 72.5,
-      30,
-      145,
-      { mass: 100, frictionAir: 0.002, friction: 0.5, restitution: 0 },
-    );
-    activeBodies.moon = Bodies.circle(logicalWidth / 2, -2500, 40, {
-      isStatic: true,
-      friction: 0.8,
-    });
-    World.add(world, [activeBodies.rocket, activeBodies.moon]);
-    activeBodies.isThrusting = false;
-    activeBodies.launchInitiated = false;
-    activeBodies.rocketLaunchTime = 0;
-    activeBodies.simVelocity = 0;
-  } else if (currentScenario === "braking") {
-    engine.gravity.scale = 0.001; // default
-
-    const vehicleType = brakingVehicleSelect
-      ? brakingVehicleSelect.value
-      : "family";
-    let carMass = 1200;
-    let carH = 60;
-    let boxYOffset = -75;
-    if (vehicleType === "sports") {
-      carMass = 1500;
-      carH = 50;
-      boxYOffset = -65;
-    } else if (vehicleType === "truck") {
-      carMass = 8000;
-      carH = 80;
-      boxYOffset = -95;
-    }
-
-    // Restore car friction to 0.1 so box has friction with the car top, ground has 0 friction, and inertia to Infinity to prevent tipping over
-    activeBodies.car = Bodies.rectangle(
-      logicalWidth / 2 - 150,
-      groundY - carH / 2,
-      140,
-      carH,
-      { mass: carMass, friction: 0.1, frictionAir: 0, inertia: Infinity },
-    );
-    activeBodies.box = Bodies.rectangle(
-      logicalWidth / 2 - 150,
-      groundY + boxYOffset,
-      40,
-      30,
-      { mass: 50, friction: 0.3, frictionAir: 0 },
-    );
-    activeBodies.vehicleType = vehicleType;
-
-    let startSpeed = parseFloat(carSpeed.value);
-    if (isNaN(startSpeed)) startSpeed = 15;
-    if (startSpeed > 40) {
-      startSpeed = 40;
-      carSpeed.value = 40;
-    } else if (startSpeed < 0) {
-      startSpeed = 0;
-      carSpeed.value = 0;
-    }
-
-    // Need to scale speed to Matter.js units (~0.5 of actual meter/s)
-    Body.setVelocity(activeBodies.car, { x: startSpeed * 0.5, y: 0 });
-    Body.setVelocity(activeBodies.box, { x: startSpeed * 0.5, y: 0 });
-
-    World.add(world, [activeBodies.car, activeBodies.box]);
-    activeBodies.braking = false;
-    activeBodies.hasBraked = false;
-    activeBodies.elapsedTimeBraking = 0;
-  } else if (currentScenario === "race") {
-    engine.gravity.y = 0; // Top-Down view (no vertical gravity)
-    engine.gravity.scale = 0.001; // default
-
-    const tMass = Math.max(
-      1000,
-      Math.min(
-        20000,
-        parseFloat(document.getElementById("truckMass")?.value) || 5000,
-      ),
-    );
-    activeBodies.car = Bodies.rectangle(
-      logicalWidth / 4 - 100,
-      logicalHeight / 2 + 50,
-      80,
-      30,
-      { mass: 1000, frictionAir: 0.05, restitution: 0, inertia: Infinity },
-    );
-    activeBodies.truck = Bodies.rectangle(
-      logicalWidth / 4 - 100,
-      logicalHeight / 2 - 50,
-      120,
-      40,
-      { mass: tMass, frictionAir: 0.05, restitution: 0, inertia: Infinity },
-    );
-    World.add(world, [activeBodies.car, activeBodies.truck]);
-    activeBodies.car.simVelocity = 0;
-    activeBodies.truck.simVelocity = 0;
-  }
-
-  updateConclusionText();
-  elapsedTime = 0;
-  particles = [];
-}
-
-// --- UPDATE & DRAW ---
-function updateStatusMessage(msg) {
-  statusMessage.textContent = msg;
-  statusMessage.style.backgroundColor = "rgba(0,0,0,0.8)";
-}
-
-function updatePhysics(dt) {
-  if (!isPlaying) return;
-
-  // Convert dt (seconds) to milliseconds for Matter.js
-  Engine.update(engine, dt * 1000);
-  elapsedTime += dt;
-
-  const groundY = logicalHeight - 50;
-
-  if (currentScenario === "trolley" && activeBodies.trolley) {
-    const force = Math.max(
-      0,
-      Math.min(1000, parseFloat(trolleyForce.value) || 0),
-    );
-    Body.applyForce(activeBodies.trolley, activeBodies.trolley.position, {
-      x: force * 0.0001,
-      y: 0,
-    });
-
-    const a = force / activeBodies.trolley.mass;
-    activeBodies.simVelocity = (activeBodies.simVelocity || 0) + a * dt;
-
-    netForceValue.textContent = force.toFixed(1);
-    accelValue.textContent = a.toFixed(2);
-    velValue.textContent = activeBodies.simVelocity.toFixed(2);
-    updateStatusMessage(
-      force > 0 ? `Troli dipercepat (a = ${a.toFixed(2)} m/s²)` : "Troli Diam",
-    );
-  } else if (currentScenario === "rocket" && activeBodies.rocket) {
-    const thrust = activeBodies.isThrusting
-      ? Math.max(0, Math.min(20000, parseFloat(rocketThrust.value) || 0))
-      : 0;
-    if (thrust > 0) {
-      const forceScale = 1.0 / 980;
-      Body.applyForce(activeBodies.rocket, activeBodies.rocket.position, {
-        x: 0,
-        y: -thrust * forceScale,
-      });
-      for (let i = 0; i < 3; i++) {
-        particles.push({
-          x: activeBodies.rocket.position.x + (Math.random() * 16 - 8),
-          y: activeBodies.rocket.position.y + 70,
-          vx: Math.random() * 4 - 2,
-          vy: Math.random() * 3 + 1,
-          life: 1,
-          color: Math.random() > 0.4 ? "#cbd5e1" : "#f97316",
-        });
-      }
-    }
-
-    const isOnGround = activeBodies.rocket.position.y >= groundY - 73;
-    const weight = activeBodies.rocket.mass * 9.8;
-
-    let netForce = thrust - weight;
-    if (isOnGround && netForce <= 0) netForce = 0;
-
-    let a = netForce / activeBodies.rocket.mass;
-
-    if (isOnGround && netForce <= 0) {
-      activeBodies.simVelocity = 0;
-    } else {
-      activeBodies.simVelocity = (activeBodies.simVelocity || 0) + a * dt;
-    }
-
-    netForceValue.textContent = Math.abs(netForce).toFixed(1);
-    accelValue.textContent = a.toFixed(2);
-    velValue.textContent = activeBodies.simVelocity.toFixed(2);
-    if (activeBodies.launchInitiated && isOnGround)
-      activeBodies.rocketLaunchTime += dt;
-
-    let msg = "";
-    if (a > 0) msg = "🚀 Roket Meluncur Naik!";
-    else if (isOnGround)
-      msg = activeBodies.launchInitiated
-        ? "⏳ Mesin menyala, gaya dorong tidak cukup"
-        : "⏳ Roket di Landasan";
-    else msg = "💥 Roket Jatuh";
-    updateStatusMessage(msg);
-  } else if (currentScenario === "braking" && activeBodies.car) {
-    let startSpeed = parseFloat(carSpeed.value);
-    if (isNaN(startSpeed)) startSpeed = 15;
-    if (startSpeed > 40) startSpeed = 40;
-    else if (startSpeed < 0) startSpeed = 0;
-
-    if (activeBodies.braking) {
-      Body.applyForce(activeBodies.car, activeBodies.car.position, {
-        x: -0.00015 * activeBodies.car.mass,
-        y: 0,
-      });
-      if (activeBodies.car.velocity.x <= 0.05) {
-        Body.setVelocity(activeBodies.car, { x: 0, y: 0 });
-        activeBodies.braking = false;
-      }
-      activeBodies.elapsedTimeBraking =
-        (activeBodies.elapsedTimeBraking || 0) + dt;
-      let vBox = Math.max(
-        0,
-        startSpeed - 2.94 * activeBodies.elapsedTimeBraking,
-      );
-      velValue.textContent = vBox.toFixed(2);
-    } else {
-      velValue.textContent = startSpeed.toFixed(2);
-    }
-
-    netForceValue.textContent = "-";
-    accelValue.textContent = "-";
-    updateStatusMessage(
-      activeBodies.braking
-        ? "Mobil Direm! Kotak terdorong (Inersia)."
-        : "Mobil Melaju Konstan",
-    );
-  } else if (currentScenario === "race" && activeBodies.car) {
-    const force = Math.max(0, Math.min(5000, parseFloat(raceForce.value) || 0));
-    Body.applyForce(activeBodies.car, activeBodies.car.position, {
-      x: force * 0.00005,
-      y: 0,
-    });
-    Body.applyForce(activeBodies.truck, activeBodies.truck.position, {
-      x: force * 0.00005,
-      y: 0,
-    });
-
-    const a_car = force / activeBodies.car.mass;
-    const a_truck = force / activeBodies.truck.mass;
-    activeBodies.car.simVelocity =
-      (activeBodies.car.simVelocity || 0) + a_car * dt;
-    activeBodies.truck.simVelocity =
-      (activeBodies.truck.simVelocity || 0) + a_truck * dt;
-
-    netForceValue.textContent = force.toFixed(1);
-    accelValue.textContent = a_car.toFixed(2);
-    velValue.textContent = activeBodies.car.simVelocity.toFixed(2);
-
-    updateStatusMessage(
-      `a(mobil)=${a_car.toFixed(2)} vs a(truk)=${a_truck.toFixed(2)}`,
-    );
-  }
-  // --- BOUNDARY CHECKS (Auto-Stop) ---
-  const checkStop = (body, condition, msg) => {
-    if (body && condition) {
-      isPlaying = false;
-      btnPlayPause.innerHTML = "▶ Mulai Simulasi";
-      updateStatusMessage(msg);
-      Body.setVelocity(body, { x: 0, y: 0 });
-      toggleInputs(false);
-    }
-  };
-
-  if (currentScenario === "trolley") {
-    // Troli bisa jalan selamanya tanpa garis finish!
-  } else if (currentScenario === "race") {
-    checkStop(
-      activeBodies.car,
-      activeBodies.car.position.x > 2000,
-      "🏁 Balapan Selesai: Mobil Sport menang!",
-    );
-    if (isPlaying)
-      checkStop(
-        activeBodies.truck,
-        activeBodies.truck.position.x > 2000,
-        "🏁 Balapan Selesai: Truk menang!",
-      );
-  } else if (currentScenario === "rocket") {
-    const moonBody = activeBodies.moon;
-    const r = activeBodies.rocket;
-    if (moonBody && r) {
-      let dist = Math.hypot(
-        r.position.x - moonBody.position.x,
-        r.position.y - moonBody.position.y,
-      );
-      if (dist < 118) {
-        if (activeBodies.simVelocity <= 8.0) {
-          checkStop(
-            r,
-            true,
-            "🌕 Pendaratan Sukses! Selamat, roket telah mendarat dengan aman di Bulan!",
-          );
-        } else {
-          for (let i = 0; i < 40; i++) {
-            particles.push({
-              x: r.position.x + (Math.random() * 20 - 10),
-              y: r.position.y - 50 + (Math.random() * 60 - 30),
-              vx: Math.random() * 12 - 6,
-              vy: Math.random() * 12 - 6,
-              life: 1.0,
-              color: Math.random() > 0.3 ? "#f97316" : "#ef4444",
-            });
-          }
-          checkStop(
-            r,
-            true,
-            "💥 Pendaratan Gagal: Roket menabrak Bulan terlalu kencang! Ulangi simulasi.",
-          );
-        }
-      }
-    }
-
-    // Logika validasi roket gagal meluncur jika di landasan > 3 detik setelah dinyalakan dan a <= 0
-    const thrust = activeBodies.isThrusting
-      ? parseFloat(rocketThrust.value) || 0
-      : 0;
-    const weight = activeBodies.rocket.mass * 9.8;
-    if (activeBodies.rocketLaunchTime > 3 && thrust <= weight) {
-      checkStop(
-        activeBodies.rocket,
-        true,
-        "💥 Simulasi Selesai: Roket gagal meluncur (Gaya Dorong < Berat)",
-      );
-    }
-  } else if (currentScenario === "braking") {
-    checkStop(
-      activeBodies.car,
-      activeBodies.car.position.x > 3000,
-      "🏁 Mobil melaju terlalu jauh! Ulangi simulasi dan tekan tombol REM MENDADAK!",
-    );
-  }
-
-  // --- CAMERA TARGET UPDATE ---
-  if (currentScenario === "trolley" && activeBodies.trolley) {
-    targetCameraX = activeBodies.trolley.position.x - 200;
-    targetCameraY = 0;
-  } else if (currentScenario === "rocket" && activeBodies.rocket) {
-    targetCameraX = 0;
-    const threshold = logicalHeight - 250;
-    if (activeBodies.rocket.position.y < threshold) {
-      targetCameraY = activeBodies.rocket.position.y - threshold;
-    } else {
-      targetCameraY = 0;
-    }
-  } else if (
-    currentScenario === "race" &&
-    activeBodies.car &&
-    activeBodies.truck
-  ) {
-    const leaderX = Math.max(
-      activeBodies.car.position.x,
-      activeBodies.truck.position.x,
-    );
-    targetCameraX = leaderX - 200;
-    targetCameraY = 0;
-  } else if (currentScenario === "braking" && activeBodies.car) {
-    if (!activeBodies.braking) {
-      targetCameraX = activeBodies.car.position.x - 200;
-    }
-    targetCameraY = 0;
-  }
-
-  timeValue.textContent = elapsedTime.toFixed(2);
-}
-
-function drawScene() {
-  ctx.clearRect(0, 0, logicalWidth, logicalHeight);
-  const groundY = logicalHeight - 50;
-
-  // 1. SCREEN-SPACE BACKGROUND (Solid Colors & Gradients)
-  if (currentScenario === "trolley") {
-    // Wall solid background
-    ctx.fillStyle = "#fef3c7"; // Warm Yellowish White Wall
-    ctx.fillRect(0, 0, logicalWidth, groundY);
-    // Floor solid background
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillRect(0, groundY, logicalWidth, 50);
-  } else if (currentScenario === "race") {
-    // Green Grass
-    ctx.fillStyle = "#22c55e";
-    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
-  } else {
-    // Sky Gradient transition to Space based on cameraY
-    // spaceFactor is 1.0 when roket ascends ~1800px
-    const spaceFactor = Math.min(1, Math.max(0, -cameraY / 1800));
-
-    let skyGradient = ctx.createLinearGradient(0, 0, 0, logicalHeight);
-
-    // Day gradient colors (bae6fd -> f0f9ff)
-    // Space gradient color (020617 -> 0f172a)
-    let r1 = Math.round(186 + (2 - 186) * spaceFactor);
-    let g1 = Math.round(230 + (6 - 230) * spaceFactor);
-    let b1 = Math.round(253 + (23 - 253) * spaceFactor);
-
-    let r2 = Math.round(240 + (15 - 240) * spaceFactor);
-    let g2 = Math.round(249 + (23 - 249) * spaceFactor);
-    let b2 = Math.round(255 + (42 - 255) * spaceFactor);
-
-    skyGradient.addColorStop(0, `rgb(${r1}, ${g1}, ${b1})`);
-    skyGradient.addColorStop(1, `rgb(${r2}, ${g2}, ${b2})`);
-    ctx.fillStyle = skyGradient;
-    ctx.fillRect(0, 0, logicalWidth, logicalHeight);
-
-    // Draw Stars if high enough
-    if (spaceFactor > 0.1) {
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, (spaceFactor - 0.1) * 1.25);
-      ctx.fillStyle = "#ffffff";
-      stars.forEach((s) => {
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
-      ctx.restore();
-    }
-  }
-
-  // 2. WORLD-SPACE DRAWINGS (Translated by Camera)
-  ctx.save();
-  ctx.translate(-cameraX, -cameraY);
-
-  // Draw Moon in world-space for Rocket Mode
-  if (currentScenario === "rocket") {
-    const moonX = logicalWidth / 2;
-    const moonY = -2500;
-
-    // Moon Glow
-    let glow = ctx.createRadialGradient(moonX, moonY, 10, moonX, moonY, 80);
-    glow.addColorStop(0, "rgba(254, 240, 138, 0.4)");
-    glow.addColorStop(1, "rgba(254, 240, 138, 0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(moonX, moonY, 80, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Moon Body
-    ctx.fillStyle = "#fef08a";
-    ctx.beginPath();
-    ctx.arc(moonX, moonY, 40, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Craters
-    ctx.fillStyle = "#eab308";
-    ctx.beginPath();
-    ctx.arc(moonX - 15, moonY - 10, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(moonX + 10, moonY + 15, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(moonX - 5, moonY + 20, 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  if (currentScenario === "trolley") {
-    // Draw repeating baseboard
-    ctx.fillStyle = "#d97706"; // Wood color
-    const startX = Math.floor(cameraX / 100) * 100 - 100;
-    ctx.fillRect(startX, groundY - 15, logicalWidth + 200, 15);
-
-    // Draw repeating Floor Tile lines
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 2;
-    for (let i = startX; i < startX + logicalWidth + 200; i += 100) {
-      ctx.beginPath();
-      ctx.moveTo(i, groundY);
-      ctx.lineTo(i - 20, logicalHeight);
-      ctx.stroke();
-    }
-
-    // Draw Trolley
-    if (activeBodies.trolley) {
-      const t = activeBodies.trolley;
-      const mass = parseFloat(trolleyMassInput.value) || 50;
-      drawTrolley(t.position.x, t.position.y, t.angle, mass);
-
-      const force = parseFloat(trolleyForce.value) || 0;
-      if (force > 0 && isPlaying) {
-        drawPersonPushing(t.position.x - 100, groundY);
-        // Panah diposisikan di atas kepala orang pendorong (yaitu y = groundY - 110)
-        drawArrow(
-          t.position.x - 100,
-          groundY - 110,
-          force * 0.5,
-          "positive",
-          "#ef4444",
-          `Dorong: ${force}N`,
-        );
-      }
-    }
-  } else if (currentScenario === "race") {
-    const trackY = logicalHeight / 2;
-    const startX = Math.floor(cameraX / 40) * 40 - 40;
-    const widthToDraw = logicalWidth + 80;
-
-    // Asphalt
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(startX, trackY - 100, widthToDraw, 200);
-
-    // Track borders (white/red stripes)
-    ctx.lineWidth = 6;
-    for (let b = startX; b < startX + widthToDraw; b += 40) {
-      ctx.strokeStyle = b % 80 === 0 ? "#ef4444" : "#ffffff";
-      ctx.beginPath();
-      ctx.moveTo(b, trackY - 97);
-      ctx.lineTo(b + 40, trackY - 97);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(b, trackY + 97);
-      ctx.lineTo(b + 40, trackY + 97);
-      ctx.stroke();
-    }
-
-    // Center dashed line
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 4;
-    ctx.setLineDash([20, 20]);
-    ctx.beginPath();
-    ctx.moveTo(startX, trackY);
-    ctx.lineTo(startX + widthToDraw, trackY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Draw Checkered Finish Line at world coordinates x = 2000
-    const finishX = 2000;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(finishX, trackY - 100, 30, 200);
-    ctx.fillStyle = "#000000";
-    for (let row = 0; row < 10; row++) {
-      for (let col = 0; col < 2; col++) {
-        if ((row + col) % 2 === 0) {
-          ctx.fillRect(finishX + col * 15, trackY - 100 + row * 20, 15, 20);
-        }
-      }
-    }
-
-    // Text "FINISH"
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 24px Inter, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("FINISH", finishX + 15, trackY - 110);
-
-    if (activeBodies.car && activeBodies.truck) {
-      drawSportsCar(
-        activeBodies.car.position.x,
-        activeBodies.car.position.y,
-        activeBodies.car.angle,
-      );
-      drawTruckObj(
-        activeBodies.truck.position.x,
-        activeBodies.truck.position.y,
-        activeBodies.truck.angle,
-      );
-    }
-  } else if (currentScenario === "rocket" && activeBodies.rocket) {
-    // Draw Ground (Grass + Asphalt Line) in world-space
-    ctx.fillStyle = "#4ade80"; // Grass
-    ctx.fillRect(-1000, groundY, 3000, 100);
-    ctx.fillStyle = "#94a3b8"; // Pad base
-    ctx.fillRect(-1000, groundY, 3000, 12);
-
-    // Draw Launch Pad Tower (visual decoration)
-    ctx.strokeStyle = "#475569";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    // Left frame
-    ctx.moveTo(logicalWidth / 2 - 60, groundY);
-    ctx.lineTo(logicalWidth / 2 - 60, groundY - 300);
-    // Right frame
-    ctx.moveTo(logicalWidth / 2 - 80, groundY);
-    ctx.lineTo(logicalWidth / 2 - 80, groundY - 300);
-    // Crossbeams
-    for (let h = groundY; h > groundY - 300; h -= 30) {
-      ctx.moveTo(logicalWidth / 2 - 80, h);
-      ctx.lineTo(logicalWidth / 2 - 60, h);
-      ctx.moveTo(logicalWidth / 2 - 80, h);
-      ctx.lineTo(logicalWidth / 2 - 60, h - 30);
-    }
-    ctx.stroke();
-
-    // Draw Rocket
-    if (activeBodies.rocket) {
-      const r = activeBodies.rocket;
-      drawRocketObj(
-        r.position.x,
-        r.position.y,
-        r.angle,
-        activeBodies.isThrusting && isPlaying,
-      );
-
-      if (isPlaying) {
-        const thrust = activeBodies.isThrusting
-          ? parseFloat(rocketThrust.value) || 0
-          : 0;
-        if (thrust > 0) {
-          drawArrow(
-            r.position.x - 40,
-            r.position.y + 40,
-            thrust * 0.1,
-            "negative",
-            "#ef4444",
-            `${thrust}N (Aksi)`,
-            true,
-          );
-          drawArrow(
-            r.position.x + 40,
-            r.position.y - 40,
-            thrust * 0.1,
-            "positive",
-            "#3b82f6",
-            `${thrust}N (Reaksi)`,
-            true,
-          );
-        }
-        drawArrow(
-          r.position.x,
-          r.position.y,
-          980 * 0.1,
-          "negative",
-          "#10b981",
-          `Berat: 980N`,
-          true,
-        );
-      }
-    }
-  } else if (currentScenario === "braking" && activeBodies.car) {
-    const startX = Math.floor(cameraX / 100) * 100 - 100;
-
-    // Draw Ground (Grass + Asphalt Line) in world-space
-    ctx.fillStyle = "#4ade80"; // Grass
-    ctx.fillRect(startX, groundY, logicalWidth + 200, 100);
-    ctx.fillStyle = "#94a3b8"; // Asphalt
-    ctx.fillRect(startX, groundY, logicalWidth + 200, 12);
-
-    // Draw road marks
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    for (let i = startX; i < startX + logicalWidth + 200; i += 150) {
-      ctx.beginPath();
-      ctx.moveTo(i, groundY + 6);
-      ctx.lineTo(i + 40, groundY + 6);
-      ctx.stroke();
-    }
-
-    if (activeBodies.car && activeBodies.box) {
-      const type = activeBodies.vehicleType || "family";
-      if (type === "sports") {
-        drawSportsCar(
-          activeBodies.car.position.x,
-          activeBodies.car.position.y,
-          activeBodies.car.angle,
-        );
-      } else if (type === "truck") {
-        drawTruckObj(
-          activeBodies.car.position.x,
-          activeBodies.car.position.y,
-          activeBodies.car.angle,
-        );
-      } else {
-        drawCarObj(
-          activeBodies.car.position.x,
-          activeBodies.car.position.y,
-          activeBodies.car.angle,
-        );
-      }
-      ctx.save();
-      ctx.translate(activeBodies.box.position.x, activeBodies.box.position.y);
-      ctx.rotate(activeBodies.box.angle);
-      ctx.fillStyle = "#8b5cf6";
-      ctx.beginPath();
-      ctx.roundRect(-20, -15, 40, 30, 4);
-      ctx.fill();
-      ctx.restore();
-
-      if (activeBodies.hasBraked) {
-        let mBox = 50;
-        let aCar = 5;
-        let fInersia = mBox * aCar;
-        let fGesek = 0.3 * mBox * 9.8;
-
-        if (
-          activeBodies.box.velocity.x > activeBodies.car.velocity.x &&
-          activeBodies.box.velocity.x > 0.1
-        ) {
-          drawArrow(
-            activeBodies.box.position.x + 20,
-            activeBodies.box.position.y - 30,
-            80,
-            "positive",
-            "#ef4444",
-            `Gaya Inersia: ${fInersia} N`,
-          );
-          drawArrow(
-            activeBodies.box.position.x - 20,
-            activeBodies.box.position.y + 35,
-            60,
-            "negative",
-            "#f59e0b",
-            `Gaya Gesek: ${fGesek.toFixed(0)} N`,
-          );
-        }
-
-        const boxX = Math.round(activeBodies.box.position.x);
-        const boxY = Math.round(activeBodies.box.position.y);
-
-        ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
-        ctx.beginPath();
-        ctx.roundRect(boxX - 110, boxY - 130, 290, 65, 8);
-        ctx.fill();
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 14px Inter, sans-serif";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-          `Perlambatan Mobil (a) = -${aCar} m/s²`,
-          boxX - 95,
-          boxY - 105,
-        );
-        ctx.fillStyle = "#fde047";
-        ctx.fillText(
-          `F_inersia > F_gesek (Kotak Terlempar!)`,
-          boxX - 95,
-          boxY - 80,
-        );
-        ctx.textBaseline = "alphabetic";
-      }
-    }
-  }
-
-  // Draw particles translated by camera
-  for (let i = particles.length - 1; i >= 0; i--) {
-    let p = particles[i];
-    p.x += p.vx || 0;
-    p.y += p.vy || 0;
-    p.life -= 0.05;
-    if (p.life <= 0) particles.splice(i, 1);
-    else {
-      ctx.fillStyle = p.color
-        ? p.color === "#f97316"
-          ? `rgba(249, 115, 22, ${p.life})`
-          : `rgba(203, 213, 225, ${p.life})`
-        : `rgba(255, 255, 255, ${p.life})`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 8 + (1 - p.life) * 15, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  ctx.restore();
-}
-
-function simulationLoop(timestamp) {
-  if (lastTime === 0) lastTime = timestamp;
-  const dt = (timestamp - lastTime) / 1000;
-  lastTime = timestamp;
-
-  // Always update physics if playing or dragging
-  if (isPlaying || mouseConstraint.mouse.button !== -1) {
-    updatePhysics(Math.min(dt * simSpeed, 0.1));
-  }
-
-  // Smooth camera transition (lerp)
-  const lerpFactor = currentScenario === "rocket" ? 1.0 : 0.08;
-  cameraX += (targetCameraX - cameraX) * lerpFactor;
-  cameraY += (targetCameraY - cameraY) * lerpFactor;
-
-  if (mouseConstraint && mouseConstraint.mouse) {
-    Matter.Mouse.setOffset(mouseConstraint.mouse, { x: cameraX, y: cameraY });
-  }
-
-  drawScene();
-  if (isPlaying || mouseConstraint.mouse.button !== -1) {
-    requestAnimationFrame(simulationLoop);
-  }
-}
-
-function resetSim() {
-  isPlaying = false;
-  btnPlayPause.innerHTML = "▶ Mulai Simulasi";
-  lastTime = 0;
-  cameraX = 0;
-  cameraY = 0;
-  targetCameraX = 0;
-  targetCameraY = 0;
-  if (mouseConstraint && mouseConstraint.mouse) {
-    Matter.Mouse.setOffset(mouseConstraint.mouse, { x: 0, y: 0 });
-  }
-  buildScenario();
-
-  velValue.textContent = "0.00";
-  netForceValue.textContent = "0";
-  accelValue.textContent = "0.00";
-
-  updateDashboardVisibility(currentScenario);
-  updatePhysicsState();
-
-  updateStatusMessage("Siap");
-  if (currentScenario === "rocket") btnLaunch.textContent = "🚀 LUNCURKAN!";
-
-  toggleInputs(false);
-  updateConclusionText();
-  drawScene();
-}
-
-// Controls
-btnPlayPause.addEventListener("click", () => {
-  isPlaying = !isPlaying;
-  if (isPlaying) {
-    btnPlayPause.innerHTML = "⏸ Jeda";
-    lastTime = performance.now();
-    requestAnimationFrame(simulationLoop);
-  } else {
-    btnPlayPause.innerHTML = "▶ Lanjut";
-  }
-  toggleInputs(isPlaying);
-});
-
-btnReset.addEventListener("click", resetSim);
-
-scenarioSelect.addEventListener("change", (e) => {
-  const sc = e.target.value;
-  currentScenario = sc;
-  trolleyControls.style.display = "none";
-  raceControls.style.display = "none";
-  rocketControls.style.display = "none";
-  brakingControls.style.display = "none";
-
-  if (sc === "trolley") trolleyControls.style.display = "block";
-  else if (sc === "race") raceControls.style.display = "block";
-  else if (sc === "rocket") rocketControls.style.display = "block";
-  else if (sc === "braking") brakingControls.style.display = "block";
-
-  updateDashboardVisibility(sc);
-
-  resetSim();
-});
-
-function updateDashboardVisibility(scenario) {
-  const overlayStats = document.getElementById("overlayStats");
-  if (!overlayStats) return;
-
-  overlayStats.style.display = "flex";
-
-  if (statForce) statForce.style.display = "";
-  if (statAccel) statAccel.style.display = "";
-  if (statVel) statVel.style.display = "";
-  if (statTime) statTime.style.display = "";
-
-  if (scenario === "race") {
-    if (statAccel) statAccel.style.display = "none";
-    if (statVel) statVel.style.display = "none";
-  } else if (scenario === "braking") {
-    if (statForce) statForce.style.display = "none";
-    if (statAccel) statAccel.style.display = "none";
-  }
-}
-
-btnLaunch.addEventListener("click", () => {
-  if (activeBodies.rocket) {
-    activeBodies.isThrusting = !activeBodies.isThrusting;
-    if (activeBodies.isThrusting) activeBodies.launchInitiated = true;
-    btnLaunch.textContent = activeBodies.isThrusting
-      ? "🛑 MATIKAN MESIN"
-      : "🚀 LUNCURKAN!";
-    if (!isPlaying) btnPlayPause.click();
-  }
-});
-
-btnBrake.addEventListener("click", () => {
-  if (activeBodies.car) {
-    activeBodies.braking = true;
-    activeBodies.hasBraked = true;
-  }
-  if (!isPlaying) btnPlayPause.click();
-});
-
-function toggleInputs(disabled) {
-  const inputs = [
-    scenarioSelect,
-    trolleyMassInput,
-    trolleyForce,
-    rocketThrust,
-    carSpeed,
-    raceForce,
-    brakingVehicleSelect,
-    document.getElementById("truckMass"),
-  ];
-  inputs.forEach((input) => {
-    if (input) input.disabled = disabled;
-  });
-}
-
+const carMass = document.getElementById("carMass");
 const truckMass = document.getElementById("truckMass");
-[
-  trolleyMassInput,
-  trolleyForce,
-  rocketThrust,
-  carSpeed,
-  raceForce,
-  truckMass,
-  brakingVehicleSelect,
-].forEach((el) => {
-  if (el) {
-    el.addEventListener("input", () => {
-      if (!isPlaying) resetSim();
-    });
-  }
-});
-
-// Clean and validate inputs on change (blur)
-[
-  trolleyMassInput,
-  trolleyForce,
-  rocketThrust,
-  carSpeed,
-  raceForce,
-  truckMass,
-].forEach((el) => {
-  if (el) {
-    el.addEventListener("change", () => {
-      let val = parseFloat(el.value);
-      if (isNaN(val)) {
-        if (el === trolleyMassInput) el.value = 50;
-        else if (el === trolleyForce) el.value = 100;
-        else if (el === rocketThrust) el.value = 1000;
-        else if (el === carSpeed) el.value = 15;
-        else if (el === raceForce) el.value = 1000;
-        else if (el === truckMass) el.value = 5000;
-        val = parseFloat(el.value);
-      }
-
-      if (el === trolleyMassInput) {
-        el.value = Math.max(5, Math.min(500, val));
-      } else if (el === trolleyForce) {
-        el.value = Math.max(0, Math.min(1000, val));
-      } else if (el === rocketThrust) {
-        el.value = Math.max(0, Math.min(20000, val));
-      } else if (el === carSpeed) {
-        el.value = Math.max(0, Math.min(40, val));
-      } else if (el === raceForce) {
-        el.value = Math.max(0, Math.min(5000, val));
-      } else if (el === truckMass) {
-        el.value = Math.max(1000, Math.min(20000, val));
-      }
-      if (!isPlaying) resetSim();
-    });
-  }
-});
-
-// Speed Controls
+const rocketThrust = document.getElementById("rocketThrust");
+const carSpeed = document.getElementById("carSpeed");
+const brakingMass = document.getElementById("brakingMass");
+const brakingForce = document.getElementById("brakingForce");
+const btnBrake = document.getElementById("btnBrake");
 const btnSpeed1 = document.getElementById("btnSpeed1");
 const btnSpeed05 = document.getElementById("btnSpeed05");
 const btnSpeed025 = document.getElementById("btnSpeed025");
 
-function setSpeed(speed, activeBtn) {
-  simSpeed = speed;
-  [btnSpeed1, btnSpeed05, btnSpeed025].forEach((btn) => {
-    if (btn) {
-      btn.style.backgroundColor = "";
-      btn.style.color = "";
+const velValue = document.getElementById("velValue");
+const accelValue = document.getElementById("accelValue");
+const netForceValue = document.getElementById("netForceValue");
+const timeValue = document.getElementById("timeValue");
+const statusMessage = document.getElementById("statusMessage");
+const conclusionText = document.getElementById("conclusionText");
+const chartLabel = document.getElementById("chartLabel");
+const btnPlayPause = document.getElementById("btnPlayPause");
+const btnReset = document.getElementById("btnReset");
+
+// ===== STATE =====
+let isPlaying = false;
+let elapsedTime = 0;
+let lastTime = 0;
+let simSpeed = 1.0;
+let currentScenario = "trolley";
+
+// Per-scenario state
+const trolleyState = { x: 0, v: 0 };
+const raceState = { xCar: 0, xTruck: 0, vCar: 0, vTruck: 0 };
+const rocketState = { y: 0, v: 0, particles: [], flame: 0 };
+const brakingState = { xCar: 0, vCar: 0, xBox: 0, vBox: 0, braking: false };
+
+// ===== CANVAS RESIZE =====
+function resizeCanvas() {
+  const c = canvas.parentElement;
+  canvas.width = c.clientWidth;
+  canvas.height = c.clientHeight;
+}
+window.addEventListener("resize", () => { resizeCanvas(); drawScene(); });
+resizeCanvas();
+
+// ===== CHART =====
+let chart = null;
+const MAX_PTS = 80;
+
+function initChart(label1, color1, label2, color2) {
+  if (chart) chart.destroy();
+  const ds = [{ label: label1, data: [], borderColor: color1, backgroundColor: color1 + "25", borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3 }];
+  if (label2) ds.push({ label: label2, data: [], borderColor: color2, backgroundColor: color2 + "15", borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 });
+  chart = new Chart(chartCanvas, {
+    type: "line",
+    data: { labels: [], datasets: ds },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { labels: { color: "#334155", font: { family: "Inter", size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: "#64748b", maxTicksLimit: 8, font: { size: 9 } }, grid: { color: "rgba(0,0,0,0.05)" } },
+        y: { ticks: { color: "#64748b", font: { size: 9 } }, grid: { color: "rgba(0,0,0,0.05)" } }
+      }
     }
   });
-  if (activeBtn) {
-    activeBtn.style.backgroundColor = "#3b82f6";
-    activeBtn.style.color = "#ffffff";
+}
+
+function pushChart(t, v1, v2) {
+  chart.data.labels.push(t.toFixed(1));
+  chart.data.datasets[0].data.push(parseFloat(v1.toFixed(3)));
+  if (v2 !== undefined && chart.data.datasets[1]) chart.data.datasets[1].data.push(parseFloat(v2.toFixed(3)));
+  if (chart.data.labels.length > MAX_PTS) { chart.data.labels.shift(); chart.data.datasets.forEach(d => d.data.shift()); }
+  chart.update("none");
+}
+
+// ===== ARROW UTIL =====
+function drawArrow(x, y, dx, dy, color, label) {
+  const len = Math.hypot(dx, dy);
+  if (len < 2) return;
+  const nx = dx / len, ny = dy / len, ah = 12;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx - nx * ah, y + dy - ny * ah); ctx.stroke();
+  const px = -ny * 6, py = nx * 6;
+  ctx.beginPath(); ctx.moveTo(x + dx, y + dy); ctx.lineTo(x + dx - nx * ah + px, y + dy - ny * ah + py); ctx.lineTo(x + dx - nx * ah - px, y + dy - ny * ah - py); ctx.fill();
+  if (label) { ctx.font = "bold 12px Inter"; ctx.textAlign = "center"; ctx.fillText(label, x + dx / 2 + px * 2, y + dy / 2 + py * 2 - 6); }
+}
+
+function drawGround(y) {
+  ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  ctx.strokeStyle = "#94a3b855"; ctx.lineWidth = 1;
+  for (let x = 0; x < canvas.width; x += 22) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 10, y + 12); ctx.stroke(); }
+}
+
+function drawWheel(x, y, r, rot, color) {
+  ctx.strokeStyle = color; ctx.fillStyle = color + "33"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y, r * 0.25, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    const a = rot + i * Math.PI / 2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + r * 0.8 * Math.cos(a), y + r * 0.8 * Math.sin(a)); ctx.stroke();
   }
 }
 
-if (btnSpeed1)
-  btnSpeed1.addEventListener("click", () => setSpeed(1.0, btnSpeed1));
-if (btnSpeed05)
-  btnSpeed05.addEventListener("click", () => setSpeed(0.5, btnSpeed05));
-if (btnSpeed025)
-  btnSpeed025.addEventListener("click", () => setSpeed(0.25, btnSpeed025));
+// ===== TROLLEY DRAW =====
+function drawTrolleyScene() {
+  const m = Math.max(1, parseFloat(trolleyMass.value) || 50);
+  const F = Math.max(0, parseFloat(trolleyForce.value) || 200);
+  const f = Math.max(0, parseFloat(trolleyFriction.value) || 20);
+  const netF = Math.max(0, F - f);
+  const a = netF / m;
 
-// Drag listener to start rendering if dragged while paused
-Events.on(mouseConstraint, "startdrag", () => {
-  if (!isPlaying) {
-    lastTime = performance.now();
-    requestAnimationFrame(simulationLoop);
+  const groundY = canvas.height * 0.7;
+  const cx = canvas.width * 0.4 + trolleyState.x;
+  const rot = trolleyState.v * elapsedTime * 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, groundY);
+  grad.addColorStop(0, "#f1f5f9"); grad.addColorStop(1, "#e2e8f0");
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, groundY);
+  drawGround(groundY);
+
+  // Trolley body
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.12)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 4;
+  ctx.fillStyle = "#cbd5e1";
+  ctx.beginPath(); ctx.roundRect(cx - 55, groundY - 70, 110, 60, 10); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.roundRect(cx - 55, groundY - 70, 110, 60, 10); ctx.stroke();
+
+  // Basket handle
+  ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 4; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx - 35, groundY - 70); ctx.quadraticCurveTo(cx, groundY - 100, cx + 35, groundY - 70); ctx.stroke();
+
+  // Wheels
+  drawWheel(cx - 35, groundY, 14, rot, "#475569");
+  drawWheel(cx + 35, groundY, 14, rot, "#475569");
+
+  // Mass text
+  ctx.fillStyle = "#1e293b"; ctx.font = "bold 14px Inter"; ctx.textAlign = "center";
+  ctx.fillText(`m = ${m} kg`, cx, groundY - 38);
+
+  // Person pushing (stick figure)
+  const personX = cx - 90, personY = groundY;
+  ctx.strokeStyle = "#f59e0b"; ctx.fillStyle = "#f59e0b"; ctx.lineWidth = 5; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.arc(personX, personY - 85, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(personX, personY - 72); ctx.lineTo(personX + 15, personY - 35); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(personX + 15, personY - 35); ctx.lineTo(personX - 5, personY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(personX + 15, personY - 35); ctx.lineTo(personX + 32, personY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(personX + 3, personY - 65); ctx.lineTo(personX + 45, personY - 55); ctx.stroke();
+
+  // Force arrows
+  if (F > 0) drawArrow(cx + 55, groundY - 40, Math.min(100, F * 0.08 + 20), 0, "#ef4444", `F=${F}N`);
+  if (f > 0) drawArrow(cx - 55, groundY - 40, -Math.min(80, f * 0.07 + 15), 0, "#8b5cf6", `f=${f}N`);
+
+  // Stats
+  velValue.textContent = trolleyState.v.toFixed(2);
+  accelValue.textContent = a.toFixed(2);
+  netForceValue.textContent = netF.toFixed(1);
+  timeValue.textContent = elapsedTime.toFixed(2);
+
+  if (netF === 0) {
+    statusMessage.textContent = `Troli ${trolleyState.v > 0 ? "bergerak konstan (ΣF = 0)" : "diam (ΣF = 0)"}`;
+    statusMessage.style.borderColor = "#10b981";
+    conclusionText.textContent = `ΣF = F − f = ${F} − ${f} = 0 N. Troli ${trolleyState.v > 0 ? "bergerak dengan kecepatan konstan v = " + trolleyState.v.toFixed(1) + " m/s (Hukum I Newton)" : "tetap diam (Hukum I Newton)"}.`;
+  } else {
+    statusMessage.textContent = `Troli dipercepat! a = F/m = ${a.toFixed(2)} m/s²`;
+    statusMessage.style.borderColor = "#3b82f6";
+    conclusionText.textContent = `ΣF = F − f = ${F} − ${f} = ${netF} N. Dari Hukum II Newton: a = ΣF/m = ${netF}/${m} = ${a.toFixed(2)} m/s². Semakin besar massa, semakin kecil percepatan untuk gaya yang sama.`;
   }
-});
+}
 
-// Init
-setTimeout(() => {
-  resizeCanvas();
-  if (btnSpeed1) setSpeed(1.0, btnSpeed1); // set initial speed style
-  scenarioSelect.dispatchEvent(new Event("change"));
-}, 100);
+// ===== RACE DRAW =====
+function drawRaceScene() {
+  const F = Math.max(1, parseFloat(raceForce.value) || 10000);
+  const mCar = Math.max(500, parseFloat(carMass.value) || 1000);
+  const mTruck = Math.max(1000, parseFloat(truckMass.value) || 8000);
+  const aCar = F / mCar, aTruck = F / mTruck;
 
-function updateConclusionText() {
-  if (!conclusionText) return;
+  const groundY = canvas.height * 0.72;
+  const startX = 60;
+  const carX = startX + raceState.xCar;
+  const truckX = startX + raceState.xTruck;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGround(groundY);
+
+  // Road markings
+  ctx.strokeStyle = "#94a3b844"; ctx.lineWidth = 3; ctx.setLineDash([30, 20]);
+  ctx.beginPath(); ctx.moveTo(0, groundY - 25); ctx.lineTo(canvas.width, groundY - 25); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Car (sports car, smaller, lower)
+  const carW = 90, carH = 36;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.15)"; ctx.shadowBlur = 8;
+  // Body
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath(); ctx.roundRect(carX, groundY - carH - 14, carW, carH, 6); ctx.fill();
+  // Windshield
+  ctx.fillStyle = "#bfdbfe";
+  ctx.beginPath(); ctx.moveTo(carX + 25, groundY - carH - 14); ctx.lineTo(carX + 45, groundY - carH - 26); ctx.lineTo(carX + 65, groundY - carH - 26); ctx.lineTo(carX + 75, groundY - carH - 14); ctx.fill();
+  ctx.restore();
+  drawWheel(carX + 20, groundY - 14, 13, raceState.vCar * elapsedTime * 2, "#1e293b");
+  drawWheel(carX + 68, groundY - 14, 13, raceState.vCar * elapsedTime * 2, "#1e293b");
+  ctx.fillStyle = "#1e293b"; ctx.font = "bold 11px Inter"; ctx.textAlign = "center";
+  ctx.fillText(`Mobil Sport`, carX + carW/2, groundY - carH - 18);
+  ctx.fillText(`m=${mCar}kg, a=${aCar.toFixed(1)}m/s²`, carX + carW/2, groundY - carH - 6);
+  ctx.fillText(`v=${raceState.vCar.toFixed(1)}m/s`, carX + carW/2, groundY + 14);
+
+  // Truck (bigger, taller)
+  const truckY = groundY - 38;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.15)"; ctx.shadowBlur = 8;
+  ctx.fillStyle = "#3b82f6";
+  ctx.beginPath(); ctx.roundRect(truckX, truckY - 28, 150, 55, 6); ctx.fill();
+  ctx.restore();
+  drawWheel(truckX + 25, groundY - 14, 16, raceState.vTruck * elapsedTime * 1.5, "#1e293b");
+  drawWheel(truckX + 80, groundY - 14, 16, raceState.vTruck * elapsedTime * 1.5, "#1e293b");
+  drawWheel(truckX + 125, groundY - 14, 16, raceState.vTruck * elapsedTime * 1.5, "#1e293b");
+  ctx.fillStyle = "#fff"; ctx.font = "bold 10px Inter"; ctx.textAlign = "center";
+  ctx.fillText(`Truk`, truckX + 75, truckY - 22);
+  ctx.fillText(`m=${mTruck}kg, a=${aTruck.toFixed(2)}m/s²`, truckX + 75, truckY - 10);
+  ctx.fillStyle = "#1e293b"; ctx.fillText(`v=${raceState.vTruck.toFixed(2)}m/s`, truckX + 75, groundY + 18);
+
+  // Force arrows
+  if (F > 0) {
+    drawArrow(carX + carW, groundY - carH/2 - 14, Math.min(60, F * 0.003 + 15), 0, "#ef4444", `F=${F}N`);
+    drawArrow(truckX + 150, truckY + 14, Math.min(60, F * 0.003 + 15), 0, "#3b82f6", `F=${F}N`);
+  }
+
+  velValue.textContent = `${raceState.vCar.toFixed(1)} / ${raceState.vTruck.toFixed(2)}`;
+  accelValue.textContent = `${aCar.toFixed(2)} / ${aTruck.toFixed(2)}`;
+  netForceValue.textContent = F.toFixed(0);
+  timeValue.textContent = elapsedTime.toFixed(2);
+  statusMessage.textContent = `a_mobil=${aCar.toFixed(2)} m/s² >> a_truk=${aTruck.toFixed(2)} m/s² — Hukum II Newton!`;
+  statusMessage.style.borderColor = "#3b82f6";
+  conclusionText.textContent = `Gaya mesin sama F = ${F} N. a = F/m → Mobil sport (${mCar}kg): a = ${aCar.toFixed(2)} m/s². Truk (${mTruck}kg): a = ${aTruck.toFixed(2)} m/s². Massa lebih besar → percepatan lebih kecil (Hukum II Newton).`;
+}
+
+// ===== ROCKET DRAW =====
+function drawRocketScene() {
+  const F = Math.max(0, parseFloat(rocketThrust.value) || 2000);
+  const m = 100;
+  const g = 9.8;
+  const W = m * g;
+  const netF = F - W;
+  const a = netF / m;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width / 2;
+  const launchPadY = canvas.height * 0.85;
+  const rocketY = launchPadY - 80 - rocketState.y;
+
+  // Sky gradient
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  skyGrad.addColorStop(0, "#0f172a"); skyGrad.addColorStop(0.6, "#1e3a5f"); skyGrad.addColorStop(1, "#f59e0b44");
+  ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Stars
+  for (let i = 0; i < 40; i++) {
+    const sx = (cx * Math.sin(i * 137.5) + cx * 0.9) % canvas.width;
+    const sy = ((i * 73.1) % (launchPadY * 0.6));
+    ctx.fillStyle = `rgba(255,255,255,${0.3 + (i % 5) * 0.12})`;
+    ctx.beginPath(); ctx.arc(sx, sy, 1.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Launch pad
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillRect(cx - 60, launchPadY, 120, 20);
+  ctx.fillStyle = "#64748b";
+  ctx.fillRect(cx - 40, launchPadY - 10, 80, 15);
+
+  // Rocket body
+  ctx.save();
+  ctx.shadowColor = "#ef4444"; ctx.shadowBlur = 20;
+  ctx.fillStyle = "#e2e8f0";
+  ctx.beginPath(); ctx.roundRect(cx - 20, rocketY - 80, 40, 110, 8); ctx.fill();
+  // Nose cone
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath(); ctx.moveTo(cx, rocketY - 110); ctx.lineTo(cx - 20, rocketY - 80); ctx.lineTo(cx + 20, rocketY - 80); ctx.fill();
+  // Windows
+  ctx.fillStyle = "#bfdbfe";
+  ctx.beginPath(); ctx.arc(cx, rocketY - 60, 10, 0, Math.PI * 2); ctx.fill();
+  // Fins
+  ctx.fillStyle = "#64748b";
+  ctx.beginPath(); ctx.moveTo(cx - 20, rocketY + 30); ctx.lineTo(cx - 40, rocketY + 60); ctx.lineTo(cx - 20, rocketY + 60); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + 20, rocketY + 30); ctx.lineTo(cx + 40, rocketY + 60); ctx.lineTo(cx + 20, rocketY + 60); ctx.fill();
+  ctx.restore();
+
+  // Exhaust flame
+  if (F > 100) {
+    const flameH = Math.min(80, netF * 0.04 + 20) * (0.8 + 0.2 * Math.sin(rocketState.flame * 0.5));
+    rocketState.flame++;
+    const flameGrad = ctx.createLinearGradient(cx, rocketY + 60, cx, rocketY + 60 + flameH);
+    flameGrad.addColorStop(0, "#f59e0b"); flameGrad.addColorStop(0.5, "#ef4444"); flameGrad.addColorStop(1, "rgba(239,68,68,0)");
+    ctx.fillStyle = flameGrad;
+    ctx.beginPath(); ctx.ellipse(cx, rocketY + 60, 15, flameH, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Exhaust particles
+    if (isPlaying && Math.random() < 0.5) {
+      rocketState.particles.push({ x: cx + (Math.random()-0.5)*20, y: rocketY + 70, vx: (Math.random()-0.5)*3, vy: Math.random()*6+2, life: 1 });
+    }
+    rocketState.particles = rocketState.particles.filter(p => p.life > 0);
+    rocketState.particles.forEach(p => {
+      ctx.fillStyle = `rgba(251,191,36,${p.life})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+      p.x += p.vx; p.y += p.vy; p.life -= 0.06;
+    });
+  }
+
+  // Aksi-reaksi labels
+  if (F > 0) {
+    ctx.fillStyle = "#10b981"; ctx.font = "bold 13px Inter"; ctx.textAlign = "left";
+    ctx.fillText(`⬆ AKSI: Gas → Roket F=${F}N`, cx + 50, rocketY - 20);
+    ctx.fillStyle = "#ef4444";
+    ctx.fillText(`⬇ REAKSI: Roket → Gas ${F}N`, cx + 50, rocketY + 5);
+    if (netF > 0) { ctx.fillStyle = "#f59e0b"; ctx.fillText(`🚀 a = (F−W)/m = ${a.toFixed(2)} m/s²`, cx + 50, rocketY + 28); }
+    else { ctx.fillStyle = "#ef4444"; ctx.fillText(`❌ F < W, roket belum bisa terbang!`, cx + 50, rocketY + 28); }
+  }
+
+  // W arrow down
+  drawArrow(cx, rocketY - 40, 0, W * 0.06 + 20, "#ef4444", `W=${W}N`);
+  // F arrow up
+  if (F > 0) drawArrow(cx, rocketY - 40, 0, -(F * 0.04 + 20), "#10b981", `F=${F}N`);
+
+  velValue.textContent = rocketState.v.toFixed(2);
+  accelValue.textContent = Math.max(0, a).toFixed(2);
+  netForceValue.textContent = netF.toFixed(0);
+  timeValue.textContent = elapsedTime.toFixed(2);
+
+  if (F <= W) {
+    statusMessage.textContent = `Roket Diam — F (${F}N) ≤ W (${W}N), butuh lebih dari 980 N!`;
+    statusMessage.style.borderColor = "#ef4444";
+    conclusionText.textContent = `Roket diam karena gaya dorong F = ${F} N ≤ berat W = m·g = 100×9.8 = 980 N. Gaya gas (reaksi) belum cukup kuat melawan gravitasi.`;
+  } else {
+    statusMessage.textContent = `🚀 Roket Meluncur! — a = ${a.toFixed(2)} m/s², v = ${rocketState.v.toFixed(1)} m/s`;
+    statusMessage.style.borderColor = "#10b981";
+    conclusionText.textContent = `Hukum III Newton: Roket mendorong gas ke bawah (aksi) → gas mendorong roket ke atas (reaksi) dengan F = ${F} N. ΣF = F − W = ${netF.toFixed(0)} N. a = ${a.toFixed(2)} m/s².`;
+  }
+}
+
+// ===== BRAKING DRAW =====
+function drawBrakingScene() {
+  const v0 = Math.max(1, parseFloat(carSpeed.value) || 20);
+  const m = Math.max(500, parseFloat(brakingMass.value) || 1500);
+  const Fbrak = Math.max(1000, parseFloat(brakingForce.value) || 8000);
+  const deccel = -Fbrak / m;
+
+  const groundY = canvas.height * 0.72;
+  const baseX = 80;
+  const carX = baseX + brakingState.xCar;
+  const boxX = baseX + brakingState.xBox;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Road
+  const roadGrad = ctx.createLinearGradient(0, groundY - 30, 0, groundY + 15);
+  roadGrad.addColorStop(0, "#374151"); roadGrad.addColorStop(1, "#1f2937");
+  ctx.fillStyle = roadGrad; ctx.fillRect(0, groundY - 30, canvas.width, 45);
+  ctx.strokeStyle = "#f59e0b44"; ctx.lineWidth = 3; ctx.setLineDash([25, 20]);
+  ctx.beginPath(); ctx.moveTo(0, groundY - 10); ctx.lineTo(canvas.width, groundY - 10); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Tire skid marks
+  if (brakingState.braking && brakingState.vCar > 0.5) {
+    ctx.strokeStyle = "#1f2937"; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(baseX + 25, groundY - 5); ctx.lineTo(carX + 25, groundY - 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(baseX + 70, groundY - 5); ctx.lineTo(carX + 70, groundY - 5); ctx.stroke();
+  }
+
+  // Car body
+  const cW = 120, cH = 40;
+  ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 10;
+  ctx.fillStyle = "#1d4ed8";
+  ctx.beginPath(); ctx.roundRect(carX, groundY - cH - 18, cW, cH, 8); ctx.fill();
+  ctx.fillStyle = "#bfdbfe";
+  ctx.beginPath(); ctx.moveTo(carX + 28, groundY - cH - 18); ctx.lineTo(carX + 50, groundY - cH - 36); ctx.lineTo(carX + 90, groundY - cH - 36); ctx.lineTo(carX + 105, groundY - cH - 18); ctx.fill();
+  ctx.restore();
+  drawWheel(carX + 25, groundY - 14, 15, brakingState.vCar * elapsedTime * 2, "#111827");
+  drawWheel(carX + 90, groundY - 14, 15, brakingState.vCar * elapsedTime * 2, "#111827");
+
+  // Box on roof
+  const bxW = 40, bxH = 30;
+  ctx.fillStyle = "#fef3c7"; ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(boxX + 40, groundY - cH - 18 - bxH, bxW, bxH, 4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#92400e"; ctx.font = "bold 11px Inter"; ctx.textAlign = "center";
+  ctx.fillText("📦", boxX + 60, groundY - cH - 18 - bxH/2 + 5);
+
+  // Brake lights
+  if (brakingState.braking) {
+    ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(carX + 8, groundY - cH - 18 + cH/2, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(carX + cW - 8, groundY - cH - 18 + cH/2, 6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Braking force arrow
+  if (brakingState.braking && brakingState.vCar > 0) {
+    drawArrow(carX + cW/2, groundY - cH/2 - 18, -Math.min(80, Fbrak * 0.005 + 20), 0, "#ef4444", `F_rem=${Fbrak}N`);
+  }
+
+  // Labels
+  ctx.fillStyle = "#1e293b"; ctx.font = "bold 12px Inter"; ctx.textAlign = "center";
+  ctx.fillText(`Mobil: ${brakingState.vCar.toFixed(1)} m/s`, carX + cW/2, groundY + 20);
+  ctx.fillStyle = "#92400e"; ctx.fillText(`Kotak: ${brakingState.vBox.toFixed(1)} m/s`, boxX + 60, groundY + 36);
+
+  velValue.textContent = `${brakingState.vCar.toFixed(1)} / ${brakingState.vBox.toFixed(1)}`;
+  accelValue.textContent = brakingState.braking ? deccel.toFixed(2) : "0.00";
+  netForceValue.textContent = brakingState.braking ? (-Fbrak).toFixed(0) : "0";
+  timeValue.textContent = elapsedTime.toFixed(2);
+
+  if (!brakingState.braking) {
+    statusMessage.textContent = `Mobil Melaju ${v0} m/s, Kotak Ikut → Tekan REM MENDADAK!`;
+    statusMessage.style.borderColor = "#f59e0b";
+    conclusionText.textContent = `Mobil dan kotak bergerak bersama dengan kecepatan awal ${v0} m/s. Kotak tidak terikat ke mobil. Tekan REM MENDADAK untuk melihat efek inersia (Hukum I Newton).`;
+  } else if (brakingState.vCar > 0.1) {
+    statusMessage.textContent = `Rem! Mobil melambat tapi Kotak Terus Meluncur (Inersia)!`;
+    statusMessage.style.borderColor = "#ef4444";
+    conclusionText.textContent = `Mobil direm: a_mobil = -F_rem/m = ${deccel.toFixed(2)} m/s². Kotak tidak terikat → kotak terus dengan kecepatan semula (Hukum I Newton: benda mempertahankan gerak). Kotak meluncur ke depan!`;
+  } else {
+    statusMessage.textContent = `Mobil Berhenti. Kotak Terus Meluncur Ke Depan!`;
+    statusMessage.style.borderColor = "#ef4444";
+  }
+}
+
+// ===== PHYSICS UPDATE =====
+function updatePhysics(dt) {
+  if (!isPlaying || dt <= 0) return;
+  const scaledDt = dt * simSpeed;
 
   if (currentScenario === "trolley") {
-    const force = Math.max(
-      0,
-      Math.min(1000, parseFloat(trolleyForce.value) || 0),
-    );
-    const mass = activeBodies.trolley ? activeBodies.trolley.mass : 50;
-    const a = force / mass;
-    if (!isPlaying && elapsedTime === 0) {
-      conclusionText.textContent = `Hukum II Newton menyatakan a = ΣF / m. Gaya ${force} N pada massa ${mass} kg menghasilkan percepatan ${a.toFixed(2)} m/s².`;
-    } else {
-      conclusionText.textContent = `Gaya bersih F = ${force} N mempercepat troli bermassa m = ${mass} kg dengan percepatan a = ${a.toFixed(2)} m/s² secara konstan.`;
-    }
+    const m = Math.max(1, parseFloat(trolleyMass.value) || 50);
+    const F = Math.max(0, parseFloat(trolleyForce.value) || 200);
+    const f = Math.max(0, parseFloat(trolleyFriction.value) || 20);
+    const netF = Math.max(0, F - f);
+    const a = netF / m;
+    trolleyState.v += a * scaledDt;
+    trolleyState.x += trolleyState.v * scaledDt * 40;
+    if (trolleyState.x > canvas.width * 0.5) { trolleyState.x = canvas.width * 0.5; isPlaying = false; btnPlayPause.textContent = "Mulai Simulasi"; }
+    pushChart(elapsedTime, trolleyState.v, a);
   } else if (currentScenario === "race") {
-    const force = Math.max(0, Math.min(5000, parseFloat(raceForce.value) || 0));
-    const m_car = activeBodies.car ? activeBodies.car.mass : 1000;
-    const m_truck = activeBodies.truck ? activeBodies.truck.mass : 5000;
-    const a_car = force / m_car;
-    const a_truck = force / m_truck;
-
-    if (!isPlaying && elapsedTime === 0) {
-      conclusionText.textContent = `Dengan gaya yang sama (${force} N), Mobil (m = ${m_car} kg) dan Truk (m = ${m_truck} kg) akan memiliki percepatan yang berbeda.`;
-    } else if (isPlaying) {
-      conclusionText.textContent = `Mobil (a = ${a_car.toFixed(2)} m/s²) melaju lebih cepat daripada Truk (a = ${a_truck.toFixed(2)} m/s²) karena massanya jauh lebih kecil.`;
-    } else {
-      // Finished
-      const carX = activeBodies.car ? activeBodies.car.position.x : 0;
-      if (carX > 2000) {
-        conclusionText.textContent = `Mobil menang karena massanya yang ringan membutuhkan sedikit inersia untuk berakselerasi kencang (${a_car.toFixed(2)} m/s²).`;
-      } else {
-        conclusionText.textContent = `Balapan selesai! Percepatan dipengaruhi secara terbalik oleh massa benda (a ∝ 1/m).`;
-      }
-    }
+    const F = Math.max(1, parseFloat(raceForce.value) || 10000);
+    const mC = Math.max(500, parseFloat(carMass.value) || 1000);
+    const mT = Math.max(1000, parseFloat(truckMass.value) || 8000);
+    raceState.vCar += (F / mC) * scaledDt;
+    raceState.vTruck += (F / mT) * scaledDt;
+    raceState.xCar += raceState.vCar * scaledDt * 30;
+    raceState.xTruck += raceState.vTruck * scaledDt * 30;
+    if (raceState.xCar > canvas.width * 0.8) { raceState.xCar = canvas.width * 0.8; isPlaying = false; btnPlayPause.textContent = "Mulai Simulasi"; }
+    pushChart(elapsedTime, raceState.vCar, raceState.vTruck);
   } else if (currentScenario === "rocket") {
-    const thrust = Math.max(
-      0,
-      Math.min(20000, parseFloat(rocketThrust.value) || 0),
-    );
-    const mass = activeBodies.rocket ? activeBodies.rocket.mass : 100;
-    const weight = mass * 9.8;
-
-    if (!isPlaying && elapsedTime === 0) {
-      conclusionText.textContent = `Hukum III Newton (Aksi-Reaksi): Gaya dorong gas roket ke bawah (Aksi) akan menghasilkan gaya dorong roket ke atas (Reaksi) dengan besar yang sama.`;
-    } else if (isPlaying) {
-      if (thrust > weight) {
-        conclusionText.textContent = `Gaya aksi mesin sebesar ${thrust} N mendorong gas ke bawah, menghasilkan gaya reaksi ${thrust} N ke atas yang melebihi berat roket (${weight.toFixed(0)} N).`;
-      } else {
-        conclusionText.textContent = `Gaya dorong (${thrust} N) tidak cukup mengatasi gaya berat roket (${weight.toFixed(0)} N) ke bawah. Roket tetap di landasan.`;
-      }
-    } else {
-      // Stopped / finished
-      if (
-        activeBodies.rocket &&
-        activeBodies.rocket.position.y <= logicalHeight - 50 - 73
-      ) {
-        const r = activeBodies.rocket;
-        const moon = activeBodies.moon;
-        if (moon) {
-          let dist = Math.hypot(
-            r.position.x - moon.position.x,
-            r.position.y - moon.position.y,
-          );
-          if (dist < 118) {
-            if (activeBodies.simVelocity <= 8.0) {
-              conclusionText.textContent = `Mendarat dengan selamat di Bulan! Kecepatan terkendali karena pengurangan thrust di saat yang tepat (Aksi = Reaksi).`;
-            } else {
-              conclusionText.textContent = `Roket hancur menabrak Bulan karena gaya reaksi dorong tidak diaktifkan untuk memperlambat jatuh bebas gravitasi Bulan.`;
-            }
-          } else {
-            conclusionText.textContent = `Roket gagal meluncur ke Bulan karena gaya dorong gas (Aksi) tidak melebihi gaya berat roket (Reaksi gravitasi Bumi).`;
-          }
-        }
-      } else {
-        conclusionText.textContent = `Gaya aksi gas ke bawah harus lebih besar dari berat roket agar dapat lepas landas (Hukum Aksi-Reaksi).`;
-      }
-    }
+    const F = Math.max(0, parseFloat(rocketThrust.value) || 2000);
+    const m = 100, g = 9.8;
+    const a = Math.max(0, (F - m * g) / m);
+    rocketState.v += a * scaledDt;
+    rocketState.y += rocketState.v * scaledDt * 25;
+    if (rocketState.y > canvas.height * 0.85) { isPlaying = false; btnPlayPause.textContent = "Mulai Simulasi"; }
+    pushChart(elapsedTime, rocketState.v, a);
   } else if (currentScenario === "braking") {
-    const startSpeed = parseFloat(carSpeed.value) || 0;
-
-    if (!isPlaying && elapsedTime === 0) {
-      conclusionText.textContent = `Kerangka Inersia: Kotak diam di atas mobil yang melaju konstan (${startSpeed} m/s). Hukum I Newton berlaku di kerangka mobil.`;
-    } else if (activeBodies.braking) {
-      conclusionText.textContent = `Mobil direm mendadak. Kotak terdorong ke depan karena mempertahankan keadaan geraknya (kelembaman/inersia) terhadap mobil yang melambat.`;
-    } else {
-      conclusionText.textContent = `Mobil telah berhenti sepenuhnya. Kotak tergelincir jatuh karena tidak diikat (inersia mempertahankan kecepatan awal ${startSpeed} m/s).`;
+    if (brakingState.braking) {
+      const m = Math.max(500, parseFloat(brakingMass.value) || 1500);
+      const Fbrak = Math.max(1000, parseFloat(brakingForce.value) || 8000);
+      brakingState.vCar = Math.max(0, brakingState.vCar - (Fbrak / m) * scaledDt);
+      brakingState.xCar += brakingState.vCar * scaledDt * 25;
+      brakingState.xBox += brakingState.vBox * scaledDt * 25; // box continues at original speed
     }
+    pushChart(elapsedTime, brakingState.vCar, brakingState.vBox);
   }
+
+  elapsedTime += dt;
 }
+
+// ===== DRAW SCENE =====
+function drawScene() {
+  if (currentScenario === "trolley") drawTrolleyScene();
+  else if (currentScenario === "race") drawRaceScene();
+  else if (currentScenario === "rocket") drawRocketScene();
+  else if (currentScenario === "braking") drawBrakingScene();
+}
+
+// ===== ANIMATION LOOP =====
+function simulationLoop(ts) {
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  updatePhysics(dt);
+  drawScene();
+  requestAnimationFrame(simulationLoop);
+}
+
+// ===== RESET =====
+function resetSim(rebuildChart = true) {
+  isPlaying = false; elapsedTime = 0; lastTime = 0;
+  trolleyState.x = 0; trolleyState.v = 0;
+  raceState.xCar = 0; raceState.xTruck = 0; raceState.vCar = 0; raceState.vTruck = 0;
+  rocketState.y = 0; rocketState.v = 0; rocketState.particles = []; rocketState.flame = 0;
+  brakingState.xCar = 0; brakingState.xBox = 0; brakingState.vCar = parseFloat(carSpeed.value) || 20; brakingState.vBox = brakingState.vCar; brakingState.braking = false;
+  btnPlayPause.textContent = "Mulai Simulasi";
+  if (rebuildChart && chart) { chart.data.labels = []; chart.data.datasets.forEach(d => d.data = []); chart.update("none"); }
+  drawScene();
+}
+
+// ===== SCENARIO SWITCH =====
+function switchScenario() {
+  currentScenario = scenarioSelect.value;
+  [trolleyControls, raceControls, rocketControls, brakingControls].forEach(el => el.style.display = "none");
+  if (currentScenario === "trolley") {
+    trolleyControls.style.display = "block";
+    chartLabel.textContent = "Grafik Kecepatan v & Percepatan a vs Waktu";
+    initChart("v troli (m/s)", "#3b82f6", "a (m/s²)", "#ef4444");
+  } else if (currentScenario === "race") {
+    raceControls.style.display = "block";
+    chartLabel.textContent = "Grafik Kecepatan: Mobil vs Truk (m/s)";
+    initChart("v Mobil Sport (m/s)", "#ef4444", "v Truk (m/s)", "#3b82f6");
+  } else if (currentScenario === "rocket") {
+    rocketControls.style.display = "block";
+    chartLabel.textContent = "Grafik Kecepatan Roket v vs Waktu";
+    initChart("v roket (m/s)", "#10b981", "a (m/s²)", "#f59e0b");
+  } else if (currentScenario === "braking") {
+    brakingControls.style.display = "block";
+    chartLabel.textContent = "Grafik Kecepatan Mobil vs Kotak (m/s)";
+    initChart("v Mobil (m/s)", "#1d4ed8", "v Kotak (m/s)", "#f59e0b");
+  }
+  resetSim(false);
+}
+
+// ===== EVENT LISTENERS =====
+btnPlayPause.addEventListener("click", () => {
+  isPlaying = !isPlaying;
+  btnPlayPause.textContent = isPlaying ? "Jeda Simulasi" : "Lanjutkan";
+  if (currentScenario === "braking" && !brakingState.braking && !isPlaying) isPlaying = true; // keep running during braking setup
+});
+btnReset.addEventListener("click", () => resetSim(true));
+scenarioSelect.addEventListener("change", switchScenario);
+
+btnBrake?.addEventListener("click", () => {
+  brakingState.vCar = parseFloat(carSpeed.value) || 20;
+  brakingState.vBox = brakingState.vCar;
+  brakingState.braking = true;
+  isPlaying = true;
+  btnPlayPause.textContent = "Jeda Simulasi";
+});
+
+[btnSpeed1, btnSpeed05, btnSpeed025].forEach(btn => {
+  btn.addEventListener("click", () => {
+    [btnSpeed1, btnSpeed05, btnSpeed025].forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    simSpeed = btn === btnSpeed1 ? 1.0 : btn === btnSpeed05 ? 0.5 : 0.25;
+  });
+});
+
+[trolleyMass, trolleyForce, trolleyFriction, raceForce, carMass, truckMass, rocketThrust, carSpeed, brakingMass, brakingForce].forEach(el => {
+  if (el) el.addEventListener("input", () => { if (!isPlaying) drawScene(); });
+});
+
+// ===== INIT =====
+switchScenario();
+requestAnimationFrame(simulationLoop);

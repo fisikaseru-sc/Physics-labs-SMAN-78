@@ -3,42 +3,90 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pertemuan 3: Jenis-Jenis Gaya - Virtual Lab</title>
-    <link
-      rel="icon"
-      type="image/jpeg"
-      href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <title>Pertemuan 3: Jenis-Jenis Gaya — Virtual Lab SMAN 78</title>
+    <meta name="description" content="Lab Virtual Jenis-Jenis Gaya: Gaya Normal, Berat, Gesek, Tegangan Tali, dan Berat Semu dalam Lift — SMAN 78 Jakarta" />
+    <link rel="icon" type="image/jpeg" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../../css/style.css" />
+    <style>
+      .chart-panel {
+        background: var(--panel-bg);
+        backdrop-filter: blur(var(--glass-blur));
+        border: 1px solid var(--panel-border);
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-top: 10px;
+      }
+      .chart-panel h3 {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+      .chart-wrapper { position: relative; height: 140px; }
+      .surface-btn {
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--panel-border);
+        background: rgba(255,255,255,0.5);
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        transition: all 0.2s;
+      }
+      .surface-btn.active, .surface-btn:hover { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+      .planet-btn {
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--panel-border);
+        background: rgba(255,255,255,0.5);
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        transition: all 0.2s;
+      }
+      .planet-btn.active, .planet-btn:hover { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
+      .force-meter {
+        width: 100%;
+        height: 22px;
+        border-radius: 6px;
+        background: rgba(0,0,0,0.08);
+        overflow: hidden;
+        position: relative;
+        margin-top: 6px;
+      }
+      .force-meter-fill {
+        height: 100%;
+        border-radius: 6px;
+        transition: width 0.3s, background 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #fff;
+        min-width: 40px;
+      }
+      .scenario-extra { margin-top: 10px; }
+    </style>
   </head>
   <body>
     <div class="app-container">
-      <header class="glass-panel" style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 15px">
-          <img
-            src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
-            alt="Logo SMAN 78"
-            style="height: 50px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);"
-          />
+      <header class="glass-panel" style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:15px">
+          <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg" alt="Logo SMAN 78" style="height:50px;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,0.2);" />
           <div class="header-text">
             <h1>Pertemuan 3 <span>Virtual Lab</span></h1>
-            <p>Eksplorasi Jenis-Jenis Gaya Spesifik (W, N, f, T)</p>
+            <p>Jenis-Jenis Gaya dalam Fisika</p>
           </div>
         </div>
-
         <div class="nav-tabs">
-          <a href="../../index.html" class="tab-btn" style="text-decoration: none">
-            <span>🏠</span>
-            <strong>Beranda</strong>
-          </a>
-          <div class="tab-btn active">
-            <span>3️⃣</span>
-            <strong>Jenis Gaya</strong>
-          </div>
+          <a href="../../index.html" class="tab-btn" style="text-decoration:none"><span>🏠</span><strong>Beranda</strong></a>
+          <div class="tab-btn active"><span>3️⃣</span><strong>Jenis-Jenis Gaya</strong></div>
         </div>
       </header>
 
@@ -46,100 +94,143 @@
         <div class="simulation-area">
           <div class="overlay-stats">
             <div class="stat-box">
-              <span class="label">Gaya Berat (W)</span>
-              <div>
-                <span class="value" id="weightVal">490.0</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label" id="stat1Label">Gaya Berat (W)</span>
+              <div><span class="value" id="stat1Value">490.0</span><span class="unit" id="stat1Unit">N</span></div>
             </div>
             <div class="stat-box">
-              <span class="label">Gaya Normal / Tegangan</span>
-              <div>
-                <span class="value" id="normalVal">490.0</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label" id="stat2Label">Gaya Normal (N)</span>
+              <div><span class="value" id="stat2Value">490.0</span><span class="unit" id="stat2Unit">N</span></div>
             </div>
             <div class="stat-box">
-              <span class="label">Resultan Gaya (ΣF)</span>
-              <div>
-                <span class="value" id="netForceValue">0.0</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label" id="stat3Label">Gaya Dorong (F)</span>
+              <div><span class="value" id="stat3Value">0.0</span><span class="unit" id="stat3Unit">N</span></div>
             </div>
             <div class="stat-box time-box">
-              <span class="label">Percepatan (a)</span>
-              <div>
-                <span class="value" id="accelVal">0.00</span>
-                <span class="unit">m/s²</span>
-              </div>
+              <span class="label" id="stat4Label">Resultan ΣF</span>
+              <div><span class="value" id="stat4Value">0.0</span><span class="unit" id="stat4Unit">N</span></div>
             </div>
           </div>
 
           <div class="simulation-container glass-panel">
             <canvas id="simCanvas"></canvas>
-            <div class="status-message" id="statusMessage">
-              Benda Seimbang (ΣF = 0)
+            <div class="status-message" id="statusMessage">Benda Diam di Lantai (N = W = mg)</div>
+          </div>
+
+          <div class="chart-panel">
+            <h3 id="chartTitle">Grafik Gaya vs Waktu</h3>
+            <div class="chart-wrapper">
+              <canvas id="chartCanvas"></canvas>
             </div>
           </div>
         </div>
 
         <aside class="controls-panel glass-panel">
-          <h2>Panel Eksperimen Jenis Gaya</h2>
+          <h2>Panel Eksperimen Gaya</h2>
 
           <div class="control-group">
-            <label>Pilih Fenomena Gaya</label>
+            <label>Pilih Jenis Gaya</label>
             <select id="scenarioSelect" class="styled-select">
-              <option value="normal_weight">📦 Gaya Normal & Berat (Lantai Datar)</option>
-              <option value="friction">🛹 Gaya Gesek Statis & Kinetis</option>
-              <option value="tension">🪢 Gaya Tegangan Tali (Digantung)</option>
-              <option value="elevator">🛗 Berat Semu dalam Lift</option>
+              <option value="normal">⬆️ Gaya Normal & Berat</option>
+              <option value="friction">🔴 Gaya Gesek Statis & Kinetis</option>
+              <option value="tension">🪢 Tegangan Tali</option>
+              <option value="lift">🛗 Berat Semu dalam Lift</option>
             </select>
           </div>
 
           <div class="control-group mt-10">
-            <label>Massa Benda (kg)</label>
+            <label>Massa Benda m (kg)</label>
             <div class="input-row">
               <input type="number" id="massInput" min="1" max="500" value="50" class="number-input" />
             </div>
+            <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 1 s.d 500 kg</span>
           </div>
 
-          <div class="control-group mt-10">
-            <label>Percepatan Gravitasi g (m/s²)</label>
-            <div class="input-row">
-              <input type="number" id="gravityInput" min="1" max="20" step="0.1" value="9.8" class="number-input" />
+          <!-- NORMAL scenario extras -->
+          <div id="normalExtras" class="scenario-extra">
+            <div class="control-group mt-10">
+              <label>Pilih Planet / Gravitasi</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                <button class="planet-btn active" data-g="9.8" data-name="Bumi 🌍">Bumi 🌍<br/><small>9.8 m/s²</small></button>
+                <button class="planet-btn" data-g="3.7" data-name="Mars 🔴">Mars 🔴<br/><small>3.7 m/s²</small></button>
+                <button class="planet-btn" data-g="1.62" data-name="Bulan 🌕">Bulan 🌕<br/><small>1.62 m/s²</small></button>
+                <button class="planet-btn" data-g="24.8" data-name="Jupiter ⭕">Jupiter ⭕<br/><small>24.8 m/s²</small></button>
+              </div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Percepatan Gravitasi g (m/s²)</label>
+              <div class="input-row">
+                <input type="number" id="gravityInput" min="0.1" max="30" step="0.1" value="9.8" class="number-input" />
+              </div>
             </div>
           </div>
 
-          <div id="frictionControls" style="display: none;">
+          <!-- FRICTION scenario extras -->
+          <div id="frictionExtras" class="scenario-extra" style="display:none">
             <div class="control-group mt-10">
               <label>Gaya Dorong F (N)</label>
               <div class="input-row">
-                <input type="number" id="pushForceInput" min="0" max="1000" value="100" class="number-input" />
+                <input type="number" id="pushForce" min="0" max="2000" value="100" class="number-input" />
+              </div>
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 0 s.d 2000 N</span>
+            </div>
+            <div class="control-group mt-10">
+              <label>Permukaan</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+                <button class="surface-btn active" data-mus="0.6" data-muk="0.4" data-name="Beton">🪨 Beton<br/><small>μs=0.6</small></button>
+                <button class="surface-btn" data-mus="0.4" data-muk="0.25" data-name="Kayu">🪵 Kayu<br/><small>μs=0.4</small></button>
+                <button class="surface-btn" data-mus="0.1" data-muk="0.05" data-name="Es">🧊 Es<br/><small>μs=0.1</small></button>
+                <button class="surface-btn" data-mus="0.8" data-muk="0.6" data-name="Pasir">🏖️ Pasir<br/><small>μs=0.8</small></button>
               </div>
             </div>
             <div class="control-group mt-10">
-              <label>Koefisien Gesek Statis (μs)</label>
-              <div class="input-row">
-                <input type="number" id="muSInput" min="0" max="1" step="0.05" value="0.4" class="number-input" />
-              </div>
+              <label>Koefisien Gesek Statis μₛ</label>
+              <div class="input-row"><input type="number" id="muSInput" min="0" max="2" step="0.05" value="0.6" class="number-input" /></div>
             </div>
             <div class="control-group mt-10">
-              <label>Koefisien Gesek Kinetis (μk)</label>
-              <div class="input-row">
-                <input type="number" id="muKInput" min="0" max="1" step="0.05" value="0.25" class="number-input" />
-              </div>
+              <label>Koefisien Gesek Kinetis μₖ</label>
+              <div class="input-row"><input type="number" id="muKInput" min="0" max="2" step="0.05" value="0.4" class="number-input" /></div>
             </div>
           </div>
 
-          <div id="elevatorControls" style="display: none;">
+          <!-- TENSION scenario extras -->
+          <div id="tensionExtras" class="scenario-extra" style="display:none">
+            <div class="control-group mt-10">
+              <label>Mode Tegangan Tali</label>
+              <select id="tensionMode" class="styled-select">
+                <option value="hang1">Benda Digantung 1 Tali (T = W)</option>
+                <option value="hang2">Benda di Atas Meja + Tali + Beban</option>
+                <option value="elevator">Benda dalam Lift (T berubah)</option>
+              </select>
+            </div>
+            <div id="tensionHang2Extras" style="display:none;margin-top:10px">
+              <div class="control-group mt-10">
+                <label>Massa Beban m₂ (kg)</label>
+                <div class="input-row"><input type="number" id="hangMass2" min="1" max="500" value="30" class="number-input" /></div>
+              </div>
+            </div>
+            <div id="tensionLiftExtras" style="display:none;margin-top:10px">
+              <div class="control-group mt-10">
+                <label>Percepatan Lift a (m/s²)</label>
+                <div class="input-row"><input type="number" id="tensionLiftAccel" min="-9.8" max="10" step="0.5" value="3" class="number-input" /></div>
+                <span class="info-text mt-5" style="display:block;color:#60a5fa">*Positif = naik, Negatif = turun, -9.8 = jatuh bebas</span>
+              </div>
+            </div>
+            <div class="control-group mt-10">
+              <label>Gravitasi g (m/s²)</label>
+              <div class="input-row"><input type="number" id="tensionGravity" min="0.1" max="30" step="0.1" value="9.8" class="number-input" /></div>
+            </div>
+          </div>
+
+          <!-- LIFT scenario extras -->
+          <div id="liftExtras" class="scenario-extra" style="display:none">
             <div class="control-group mt-10">
               <label>Percepatan Lift a (m/s²)</label>
-              <div class="input-row">
-                <input type="number" id="elevatorAccelInput" min="-10" max="10" step="0.5" value="2.0" class="number-input" />
-              </div>
-              <span class="info-text mt-5" style="display: block; color: #60a5fa;">
-                *Positif = Lift dipercepat NAIK<br>*Negatif = Lift dipercepat TURUN
-              </span>
+              <div class="input-row"><input type="number" id="liftAccel" min="-9.8" max="10" step="0.5" value="3" class="number-input" /></div>
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*Positif = dipercepat naik. -9.8 = jatuh bebas (berat semu = 0)</span>
+            </div>
+            <div class="control-group mt-10">
+              <label>Gravitasi g (m/s²)</label>
+              <div class="input-row"><input type="number" id="liftGravity" min="1" max="30" step="0.1" value="9.8" class="number-input" /></div>
             </div>
           </div>
 
@@ -151,14 +242,15 @@
             </div>
           </div>
 
-          <div class="instruction-box">
+          <div class="instruction-box" style="margin-top:10px">
             <strong>Kesimpulan Fisika:</strong>
-            <span id="conclusionText">Ubah nilai massa dan gaya untuk mengamati interaksi gaya.</span>
+            <span id="conclusionText">Ubah skenario dan parameter untuk mengamati berbagai jenis gaya.</span>
           </div>
         </aside>
       </main>
     </div>
 
+    <script src="../../../../../shared/lib/chart.umd.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

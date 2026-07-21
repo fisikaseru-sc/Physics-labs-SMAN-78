@@ -3,42 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pertemuan 6: Kesetimbangan Partikel - Virtual Lab</title>
-    <link
-      rel="icon"
-      type="image/jpeg"
-      href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <title>Pertemuan 6: Kesetimbangan Partikel — Virtual Lab SMAN 78</title>
+    <meta name="description" content="Lab Virtual Kesetimbangan Partikel 2D — ΣFx = 0, ΣFy = 0, Tegangan Tali T₁ dan T₂. SMAN 78 Jakarta." />
+    <link rel="icon" type="image/jpeg" href="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../../css/style.css" />
+    <style>
+      .chart-panel { background: var(--panel-bg); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--panel-border); border-radius: 12px; padding: 14px 18px; margin-top: 10px; }
+      .chart-panel h3 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 8px; }
+      .chart-wrapper { position: relative; height: 130px; }
+      .scenario-tab { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.5); cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--text-primary); transition: all 0.2s; flex: 1; text-align: center; }
+      .scenario-tab.active, .scenario-tab:hover { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+    </style>
   </head>
   <body>
     <div class="app-container">
-      <header class="glass-panel" style="display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 15px">
-          <img
-            src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg"
-            alt="Logo SMAN 78"
-            style="height: 50px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);"
-          />
+      <header class="glass-panel" style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:15px">
+          <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi27eZ8eNQYf1B7Z8wdnjdolxvw5zZRRBxRRQMY4Z7y-Hp1IFicZYQbSLMOGTI4mwnU4KEyFT63V61UaRnlpi84YVoRtSD4_xguj6-Gzevgw_om4_0Wri08KKg54H2_enqqU7qH0aikqVQ/s320/LOGO+SMAN+78+JAKARTA.jpg" alt="Logo SMAN 78" style="height:50px;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,0.2);" />
           <div class="header-text">
             <h1>Pertemuan 6 <span>Virtual Lab</span></h1>
-            <p>Kesetimbangan Partikel (ΣFx = 0, ΣFy = 0)</p>
+            <p>Kesetimbangan Partikel 2D (ΣFx = 0, ΣFy = 0)</p>
           </div>
         </div>
-
         <div class="nav-tabs">
-          <a href="../../index.html" class="tab-btn" style="text-decoration: none">
-            <span>🏠</span>
-            <strong>Beranda</strong>
-          </a>
-          <div class="tab-btn active">
-            <span>6️⃣</span>
-            <strong>Kesetimbangan Partikel</strong>
-          </div>
+          <a href="../../index.html" class="tab-btn" style="text-decoration:none"><span>🏠</span><strong>Beranda</strong></a>
+          <div class="tab-btn active"><span>6️⃣</span><strong>Kesetimbangan</strong></div>
         </div>
       </header>
 
@@ -46,40 +36,31 @@
         <div class="simulation-area">
           <div class="overlay-stats">
             <div class="stat-box">
-              <span class="label">Gaya Berat (W)</span>
-              <div>
-                <span class="value" id="weightVal">490.0</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label" id="s1label">Gaya Berat (W)</span>
+              <div><span class="value" id="weightVal">490.0</span><span class="unit">N</span></div>
             </div>
             <div class="stat-box">
-              <span class="label">Tegangan T1 (Tali 1)</span>
-              <div>
-                <span class="value" id="t1Val">346.4</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label">Tegangan T₁</span>
+              <div><span class="value" id="t1Val">346.4</span><span class="unit">N</span></div>
             </div>
             <div class="stat-box">
-              <span class="label">Tegangan T2 (Tali 2)</span>
-              <div>
-                <span class="value" id="t2Val">346.4</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label">Tegangan T₂</span>
+              <div><span class="value" id="t2Val">346.4</span><span class="unit">N</span></div>
             </div>
             <div class="stat-box time-box">
-              <span class="label">Resultan Gaya (ΣF)</span>
-              <div>
-                <span class="value" id="netForceValue">0.0</span>
-                <span class="unit">N</span>
-              </div>
+              <span class="label">Resultan ΣF</span>
+              <div><span class="value" id="netForceValue">0.0</span><span class="unit">N</span></div>
             </div>
           </div>
 
           <div class="simulation-container glass-panel">
             <canvas id="simCanvas"></canvas>
-            <div class="status-message" id="statusMessage">
-              Partikel dalam Kesetimbangan Sempurna (ΣF = 0)
-            </div>
+            <div class="status-message" id="statusMessage">Partikel dalam Kesetimbangan Sempurna (ΣF = 0)</div>
+          </div>
+
+          <div class="chart-panel">
+            <h3 id="chartTitle">Grafik T₁ & T₂ vs Sudut θ₁</h3>
+            <div class="chart-wrapper"><canvas id="chartCanvas"></canvas></div>
           </div>
         </div>
 
@@ -87,49 +68,69 @@
           <h2>Panel Eksperimen Kesetimbangan</h2>
 
           <div class="control-group mt-10">
+            <label>Skenario Kesetimbangan</label>
+            <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
+              <button class="scenario-tab active" id="tabSymm">🪢 2 Tali Simetris</button>
+              <button class="scenario-tab" id="tabAsymm">🪢🪢 2 Tali Asimetris</button>
+              <button class="scenario-tab" id="tabIncline">📐 Bidang Miring + Tali</button>
+            </div>
+          </div>
+
+          <div class="control-group mt-10">
             <label>Massa Beban m (kg)</label>
             <div class="input-row">
               <input type="number" id="massInput" min="1" max="500" value="50" class="number-input" />
             </div>
+            <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 1 s.d 500 kg</span>
           </div>
 
           <div class="control-group mt-10">
-            <label>Sudut Tali 1 θ1 (°)</label>
+            <label>Sudut Tali 1 θ₁ (°)</label>
             <div class="input-row">
               <input type="number" id="theta1Input" min="5" max="85" value="45" class="number-input" />
             </div>
+            <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 5° s.d 85°</span>
           </div>
 
-          <div class="control-group mt-10">
-            <label>Sudut Tali 2 θ2 (°)</label>
+          <div id="theta2Group" class="control-group mt-10">
+            <label>Sudut Tali 2 θ₂ (°)</label>
             <div class="input-row">
               <input type="number" id="theta2Input" min="5" max="85" value="45" class="number-input" />
+            </div>
+            <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 5° s.d 85°</span>
+          </div>
+
+          <div id="inclineGroup" class="control-group mt-10" style="display:none">
+            <label>Sudut Bidang Miring θ (°)</label>
+            <div class="input-row">
+              <input type="number" id="inclineAngle" min="5" max="80" value="30" class="number-input" />
             </div>
           </div>
 
           <div class="control-group mt-10">
-            <label>Percepatan Gravitasi g (m/s²)</label>
+            <label>Gravitasi g (m/s²)</label>
             <div class="input-row">
-              <input type="number" id="gravityInput" min="1" max="20" step="0.1" value="9.8" class="number-input" />
+              <input type="number" id="gravityInput" min="1" max="30" step="0.1" value="9.8" class="number-input" />
             </div>
           </div>
 
           <div class="control-group mt-10">
             <label>Kontrol Waktu</label>
             <div class="button-row">
-              <button id="btnPlayPause" class="btn primary">Mulai Simulasi</button>
-              <button id="btnReset" class="btn secondary">Ulangi</button>
+              <button id="btnPlayPause" class="btn primary">Animasi Bergoyang</button>
+              <button id="btnReset" class="btn secondary">Reset</button>
             </div>
           </div>
 
-          <div class="instruction-box">
+          <div class="instruction-box" style="margin-top:10px">
             <strong>Kesimpulan Fisika:</strong>
-            <span id="conclusionText">Ubah sudut tali dan massa beban untuk mengamati tegangan tali T1 dan T2.</span>
+            <span id="conclusionText">Ubah sudut tali dan massa beban untuk mengamati tegangan tali T₁ dan T₂.</span>
           </div>
         </aside>
       </main>
     </div>
 
+    <script src="../../../../../shared/lib/chart.umd.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
