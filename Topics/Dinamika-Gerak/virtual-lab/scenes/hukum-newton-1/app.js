@@ -200,8 +200,9 @@ function updateStatusMessage(netForce) {
 function drawArrow(x, y, length, direction, color, label) {
   if (length === 0) return;
   const sign = direction === "right" ? 1 : -1;
-  const ah = 14, len = Math.abs(length);
+  const ah = 14, len = Math.max(20, Math.abs(length));
 
+  ctx.save();
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.lineTo(x + sign * Math.max(1, len - ah), y);
@@ -213,10 +214,21 @@ function drawArrow(x, y, length, direction, color, label) {
   ctx.lineTo(x + sign * Math.max(1, len - ah), y + ah);
   ctx.fillStyle = color; ctx.fill();
 
-  ctx.fillStyle = color;
-  ctx.font = "bold 13px Inter,sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(label, x + sign * (len / 2), y - ah - 6);
+  if (label) {
+    const textY = Math.max(18, y - ah - 5);
+    ctx.font = "bold 13px Inter, sans-serif";
+    ctx.textAlign = "center";
+
+    // High-contrast white stroke around text so yellow/orange labels are 100% clear and visible
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 4;
+    ctx.lineJoin = "round";
+    ctx.strokeText(label, x + sign * (len / 2), textY);
+
+    ctx.fillStyle = color === "#f59e0b" ? "#d97706" : color;
+    ctx.fillText(label, x + sign * (len / 2), textY);
+  }
+  ctx.restore();
 }
 
 // ===== DRAW PERSON =====
@@ -360,9 +372,9 @@ function drawBackground(scenario, centerX, centerY) {
     // Road
     ctx.fillStyle = "#374151"; ctx.fillRect(0, centerY, W, H - centerY);
     ctx.fillStyle = "#4b5563"; ctx.fillRect(0, centerY, W, 20);
-    // Road dashes (moving)
+    // Road dashes move to the left as car advances to the right
     ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 4; ctx.setLineDash([40, 30]);
-    ctx.lineDashOffset = -(box.x * SCALE * 0.5) % 70;
+    ctx.lineDashOffset = (box.x * SCALE * 0.8) % 70;
     ctx.beginPath(); ctx.moveTo(0, centerY + 10); ctx.lineTo(W, centerY + 10); ctx.stroke();
     ctx.setLineDash([]);
     // Green grass
@@ -450,7 +462,15 @@ function drawScene() {
   else if (scenario === "custom") drawShape = customObject.value;
 
   const isCar = drawShape === "car";
-  const boxPixelX = isCar ? centerX : centerX + box.x * SCALE;
+  let boxPixelX;
+  if (isCar) {
+    // Car advances smoothly across canvas from left to right
+    const trackWidth = Math.max(300, canvas.width - 200);
+    boxPixelX = 100 + ((box.x * SCALE * 0.6) % trackWidth);
+  } else {
+    boxPixelX = centerX + box.x * SCALE;
+  }
+
   const boxW = Math.max(80, Math.min(160, box.mass * 2 + 60));
   const boxH = Math.max(50, Math.min(100, box.mass * 1.2 + 40));
   const bpY = centerY - boxH;
@@ -468,18 +488,15 @@ function drawScene() {
     const carW = 180, carH = 80;
     drawCar(boxPixelX, centerY - carH, carW, carH, wheelAngle);
   } else if (drawShape === "rope") {
-    // Compact rope length so people stay inside lab canvas
     const ropeHalfLen = 90;
     ctx.strokeStyle = "#78350f"; ctx.lineWidth = 8; ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(boxPixelX - ropeHalfLen, bpY + boxH/2);
     ctx.lineTo(boxPixelX + ropeHalfLen, bpY + boxH/2); ctx.stroke();
-    // Rope texture
     ctx.strokeStyle = "#92400e"; ctx.lineWidth = 2;
     for (let tx = boxPixelX - ropeHalfLen; tx < boxPixelX + ropeHalfLen; tx += 10) {
       ctx.beginPath(); ctx.moveTo(tx, bpY + boxH/2 - 4); ctx.lineTo(tx + 6, bpY + boxH/2 + 4); ctx.stroke();
     }
-    // Center flag
     ctx.fillStyle = "#ef4444";
     ctx.beginPath(); ctx.moveTo(boxPixelX, bpY + boxH/2); ctx.lineTo(boxPixelX + 12, bpY + boxH/2 + 28); ctx.lineTo(boxPixelX - 12, bpY + boxH/2 + 28); ctx.fill();
     ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 3;
@@ -521,19 +538,19 @@ function drawScene() {
   }
 
   // Force arrows
-  const yForceBase = bpY - 30;
+  const yForceBase = bpY - 25;
   const { fApp, fFric } = computeNet();
 
   if (forces.f1 > 0) {
     const xStart = forces.dir1 === "right" ? boxPixelX - boxW/2 : boxPixelX + boxW/2;
     const lbl = scenario === "tariktambang" ? `Tarik Kiri: ${forces.f1}N` :
                 scenario === "konstan" ? `Mesin: ${forces.f1}N` : `F1: ${forces.f1}N`;
-    drawArrow(xStart, yForceBase, forces.f1 * PIXELS_PER_NEWTON, forces.dir1, "#ef4444", lbl);
+    drawArrow(xStart, Math.max(25, yForceBase), forces.f1 * PIXELS_PER_NEWTON, forces.dir1, "#ef4444", lbl);
   }
   if (forces.f2 > 0) {
     const xStart = forces.dir2 === "right" ? boxPixelX - boxW/2 : boxPixelX + boxW/2;
     const lbl = scenario === "tariktambang" ? `Tarik Kanan: ${forces.f2}N` : `F2: ${forces.f2}N`;
-    drawArrow(xStart, yForceBase - 38, forces.f2 * PIXELS_PER_NEWTON, forces.dir2, "#10b981", lbl);
+    drawArrow(xStart, Math.max(25, yForceBase - 36), forces.f2 * PIXELS_PER_NEWTON, forces.dir2, "#10b981", lbl);
   }
   const frictionLimit = Math.max(0, parseFloat(frictionForceInput.value) || 0);
   if (Math.abs(fFric) > 0.01) {
@@ -544,10 +561,13 @@ function drawScene() {
       : `f_gesek: ${Math.abs(fFric).toFixed(0)}N`;
     drawArrow(xStart, centerY - 18, Math.abs(fFric) * PIXELS_PER_NEWTON, fDir, "#8b5cf6", fricLbl);
   }
+
+  // Net force arrow — ensure it's always high-contrast & visible
   const net = parseFloat(netForceValue.textContent);
   if (Math.abs(net) > 0.01) {
     const dir = net > 0 ? "right" : "left";
-    drawArrow(boxPixelX, yForceBase - 76, Math.abs(net) * PIXELS_PER_NEWTON, dir, "#f59e0b", `ΣF: ${Math.abs(net).toFixed(1)}N`);
+    const netY = Math.max(25, yForceBase - (forces.f2 > 0 ? 68 : 36));
+    drawArrow(boxPixelX, netY, Math.abs(net) * PIXELS_PER_NEWTON, dir, "#f59e0b", `ΣF: ${Math.abs(net).toFixed(1)} N`);
   }
 }
 
@@ -579,8 +599,8 @@ function updatePhysics(dt) {
   if (Math.abs(box.velocity) < 1e-4 && Math.abs(net) < 0.01) box.velocity = 0;
   box.x += box.velocity * dt;
 
-  // Wheel rotation
-  wheelAngle += box.velocity * dt * 3.5;
+  // Wheel rotation (forward when v > 0)
+  wheelAngle += box.velocity * dt * 4.0;
 
   // Ghost frictionless
   if (showCompare) {
