@@ -139,7 +139,6 @@
               <option value="tariktambang">🪢 Tarik Tambang</option>
               <option value="gesekan">🧱 Meja Didorong (Ada Gesekan)</option>
               <option value="konstan">🚗 Mobil Melaju Konstan</option>
-              <option value="angkasa">🚀 Ruang Angkasa (Tanpa Gesekan)</option>
             </select>
           </div>
 
@@ -210,11 +209,11 @@
 
           <!-- Friction -->
           <div class="control-group mt-10">
-            <label>Gaya Gesek Permukaan (N)</label>
+            <label>Gaya Gesek Permukaan f_s (N)</label>
             <div class="input-row">
               <input type="number" id="frictionForce" min="0" max="500" value="0" class="number-input" />
             </div>
-            <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 0 s.d 500 N (otomatis melawan arah gerak)</span>
+            <span class="info-text mt-5" style="display:block;color:#60a5fa">*Batas: 0 s.d 500 N. Menahan gerakan hingga F_dorong &gt; f_gesek</span>
           </div>
 
           <!-- Mass -->

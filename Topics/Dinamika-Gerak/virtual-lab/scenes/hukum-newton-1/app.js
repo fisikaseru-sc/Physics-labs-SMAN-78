@@ -1,9 +1,5 @@
 // ============================================================
 // Hukum I Newton — Virtual Lab SMAN 78
-// Improvements: v-t chart, percepatan stat, animasi roda,
-//   penanda posisi semua skenario, background kaya,
-//   tarik tambang animasi kaki, mode tanpa gesekan,
-//   skenario ruang angkasa
 // ============================================================
 
 // ===== DOM REFS =====
@@ -165,50 +161,37 @@ function updateStatusMessage(netForce) {
   const { forces, fApp, fFric } = computeNet();
   const frictionLimit = Math.max(0, parseFloat(frictionForceInput.value) || 0);
 
-  if (scenario === "angkasa") {
-    if (Math.abs(box.velocity) < 0.01) {
-      statusMessage.textContent = "Benda Diam di Ruang Angkasa (tidak ada gaya)";
-      statusMessage.style.borderColor = "#6366f1";
-      conclusionText.textContent = "Di ruang angkasa tanpa gaya luar dan tanpa gesekan, benda tetap diam (ΣF = 0). Hukum I Newton berlaku sempurna.";
-    } else {
-      statusMessage.textContent = `🚀 Bergerak Abadi: v = ${box.velocity.toFixed(2)} m/s (ΣF = 0)`;
-      statusMessage.style.borderColor = "#6366f1";
-      conclusionText.textContent = `Di ruang angkasa tidak ada gesekan maupun hambatan. Begitu benda diberi dorongan, benda bergerak SELAMANYA dengan kecepatan konstan v = ${box.velocity.toFixed(2)} m/s. Inilah inti Hukum I Newton!`;
-    }
-    return;
-  }
-
   if (Math.abs(box.velocity) < 0.01 && Math.abs(netForce) < 0.01) {
     statusMessage.textContent = "Benda Diam (Resultan Gaya ΣF = 0)";
     statusMessage.style.borderColor = "#f59e0b";
     if (scenario === "tariktambang") {
-      conclusionText.textContent = "Tarik tambang seimbang (ΣF = 0). Gaya tarik kiri = kanan → tali diam.";
+      conclusionText.textContent = "Tarik tambang seimbang (ΣF = 0). Gaya tarik kiri = kanan → tali tetap diam.";
     } else if (scenario === "gesekan") {
-      conclusionText.textContent = `Gaya dorong ${Math.abs(fApp).toFixed(0)} N dilawan gaya gesek statis ${Math.abs(fFric).toFixed(0)} N → ΣF = 0. Meja diam!`;
+      conclusionText.textContent = `Gaya dorong (${Math.abs(fApp).toFixed(0)} N) ≤ Gaya gesek maks (${frictionLimit} N). Gaya gesek statis bekerja sebesar ${Math.abs(fFric).toFixed(0)} N → ΣF = 0 (Benda tetap diam).`;
     } else if (scenario === "berlawanan") {
-      conclusionText.textContent = "Dua gaya berlawanan sama besar → saling meniadakan (ΣF = 0). Benda diam!";
+      conclusionText.textContent = "Dua gaya berlawanan sama besar → saling meniadakan (ΣF = 0). Benda tetap diam!";
     } else {
-      conclusionText.textContent = "ΣF = 0 → Benda yang diam tetap diam (Hukum I Newton).";
+      conclusionText.textContent = "ΣF = 0 → Sesuai Hukum I Newton, benda yang diam akan tetap diam.";
     }
   } else if (Math.abs(box.velocity) >= 0.01 && Math.abs(netForce) < 0.01) {
     statusMessage.textContent = `Bergerak Konstan: v = ${box.velocity.toFixed(2)} m/s (ΣF = 0)`;
     statusMessage.style.borderColor = "#10b981";
     if (scenario === "konstan") {
-      conclusionText.textContent = `Gaya mesin ${forces.f1} N = Gaya hambatan ${frictionLimit} N → ΣF = 0. Mobil bergerak konstan v = ${box.velocity.toFixed(2)} m/s. Hukum I Newton!`;
+      conclusionText.textContent = `Gaya mesin (${forces.f1} N) = Gaya hambatan (${frictionLimit} N) → Resultan Gaya ΣF = 0. Mobil bergerak konstan dengan kecepatan ${box.velocity.toFixed(2)} m/s (Hukum I Newton).`;
     } else {
-      conclusionText.textContent = `ΣF = 0 → Benda yang bergerak terus bergerak dengan kecepatan konstan v = ${box.velocity.toFixed(2)} m/s. Hukum I Newton!`;
+      conclusionText.textContent = `ΣF = 0 → Sesuai Hukum I Newton, benda yang bergerak akan terus bergerak dengan kecepatan konstan (v = ${box.velocity.toFixed(2)} m/s).`;
     }
   } else {
     statusMessage.textContent = `Benda Dipercepat: a = ${box.acceleration.toFixed(2)} m/s²`;
     statusMessage.style.borderColor = "#3b82f6";
     if (scenario === "searah") {
-      conclusionText.textContent = `Dua gaya searah: ΣF = F1+F2 = ${Math.abs(fApp).toFixed(0)} N → a = ΣF/m = ${box.acceleration.toFixed(2)} m/s². ΣF ≠ 0 → kecepatan berubah!`;
+      conclusionText.textContent = `Dua gaya searah: ΣF = F1 + F2 = ${Math.abs(fApp).toFixed(0)} N → a = ΣF/m = ${box.acceleration.toFixed(2)} m/s². Kecepatan benda terus bertambah!`;
     } else if (scenario === "berlawanan") {
       conclusionText.textContent = `Gaya tidak seimbang: ΣF = ${netForce.toFixed(1)} N → a = ${box.acceleration.toFixed(2)} m/s². Benda bergerak ke arah gaya dominan.`;
     } else if (scenario === "gesekan") {
-      conclusionText.textContent = `F_dorong (${Math.abs(fApp).toFixed(0)} N) > f_gesek (${frictionLimit} N) → ΣF = ${netForce.toFixed(1)} N → a = ${box.acceleration.toFixed(2)} m/s²!`;
+      conclusionText.textContent = `Gaya dorong (${Math.abs(fApp).toFixed(0)} N) > Gaya gesek (${frictionLimit} N) → Resultan Gaya ΣF = ${netForce.toFixed(1)} N → a = ${box.acceleration.toFixed(2)} m/s². Meja meluncur dipercepat!`;
     } else {
-      conclusionText.textContent = `ΣF = ${netForce.toFixed(1)} N ≠ 0 → Kecepatan berubah (a = ${box.acceleration.toFixed(2)} m/s²). Hukum I Newton dilanggar!`;
+      conclusionText.textContent = `Resultan gaya ΣF = ${netForce.toFixed(1)} N ≠ 0 → Kecepatan berubah (a = ${box.acceleration.toFixed(2)} m/s²).`;
     }
   }
 }
@@ -236,7 +219,7 @@ function drawArrow(x, y, length, direction, color, label) {
   ctx.fillText(label, x + sign * (len / 2), y - ah - 6);
 }
 
-// ===== DRAW PERSON (improved tug-of-war legs) =====
+// ===== DRAW PERSON =====
 function drawPerson(x, y, actionDir, color, isPulling, time) {
   ctx.fillStyle = color; ctx.strokeStyle = color;
   ctx.save(); ctx.translate(x, y);
@@ -257,7 +240,7 @@ function drawPerson(x, y, actionDir, color, isPulling, time) {
   ctx.beginPath(); ctx.moveTo(0, -15 + wobble);
   ctx.lineTo(actionDir === "right" ? 28 : -28, -5 + wobble); ctx.stroke();
 
-  // Legs — [6. tarik tambang animasi kaki]: alternate stride animation
+  // Legs
   ctx.lineWidth = 8;
   const stride = isPulling ? Math.sin(time * 9) * 12 : 0;
   const braceDir = actionDir === "right" ? 1 : -1;
@@ -296,7 +279,7 @@ function drawTable(x, y, w, h) {
   }
 }
 
-// ===== DRAW CAR (with animated wheels) =====
+// ===== DRAW CAR =====
 function drawCar(x, y, w, h, wheelRot) {
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 5;
@@ -322,7 +305,7 @@ function drawCar(x, y, w, h, wheelRot) {
   ctx.beginPath();
   ctx.arc(facing > 0 ? x + w/2 - 5 : x - w/2 + 5, y + h/2.5 + 15, 8, 0, Math.PI*2); ctx.fill();
 
-  // [3. Animasi roda berputar] — draw animated wheels
+  // Animated wheels
   const drawWheel = (wx, wy) => {
     ctx.fillStyle = "#0f172a"; ctx.beginPath(); ctx.arc(wx, wy, 20, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = "#cbd5e1"; ctx.beginPath(); ctx.arc(wx, wy, 8, 0, Math.PI*2); ctx.fill();
@@ -339,7 +322,7 @@ function drawCar(x, y, w, h, wheelRot) {
   drawWheel(x + w/3, y + h - 10);
 }
 
-// ===== DRAW GHOST (frictionless comparison) =====
+// ===== DRAW GHOST =====
 function drawGhost(gx, y, w, h) {
   ctx.save();
   ctx.globalAlpha = 0.35;
@@ -353,40 +336,16 @@ function drawGhost(gx, y, w, h) {
   ctx.restore();
 }
 
-// ===== RICH BACKGROUNDS per scenario =====
+// ===== BACKGROUNDS =====
 function drawBackground(scenario, centerX, centerY) {
   const W = canvas.width, H = canvas.height;
 
-  if (scenario === "angkasa") {
-    // Space: deep black sky with stars
-    const spaceGrad = ctx.createLinearGradient(0, 0, 0, H);
-    spaceGrad.addColorStop(0, "#0a0a1a"); spaceGrad.addColorStop(1, "#0f172a");
-    ctx.fillStyle = spaceGrad; ctx.fillRect(0, 0, W, H);
-    // Stars
-    ctx.fillStyle = "#ffffff";
-    for (let i = 0; i < 80; i++) {
-      const sx = (W * Math.sin(i * 137.5) + W) % W;
-      const sy = (H * Math.cos(i * 97.3) + H) % H;
-      const sr = 0.5 + (i % 4) * 0.5;
-      ctx.globalAlpha = 0.4 + (i % 5) * 0.12;
-      ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-    // Planet in background
-    ctx.fillStyle = "#1e40af22";
-    ctx.beginPath(); ctx.arc(W * 0.82, H * 0.22, 60, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = "#3b82f644"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(W * 0.82, H * 0.22, 60, 0, Math.PI*2); ctx.stroke();
-    // Ground line (space station floor)
-    ctx.fillStyle = "#1e293b"; ctx.fillRect(0, centerY, W, H - centerY);
-    ctx.strokeStyle = "#334155"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(W, centerY); ctx.stroke();
-
-  } else if (scenario === "konstan") {
+  if (scenario === "konstan") {
     // Highway scene
     const skyGrad = ctx.createLinearGradient(0, 0, 0, centerY);
     skyGrad.addColorStop(0, "#7dd3fc"); skyGrad.addColorStop(1, "#bae6fd");
     ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, W, centerY);
+
     // Clouds
     const drawCloud = (cx, cy, r) => {
       ctx.fillStyle = "#fff"; ctx.globalAlpha = 0.8;
@@ -397,10 +356,11 @@ function drawBackground(scenario, centerX, centerY) {
     };
     drawCloud(W * 0.2, centerY * 0.3, 25);
     drawCloud(W * 0.7, centerY * 0.4, 20);
+
     // Road
     ctx.fillStyle = "#374151"; ctx.fillRect(0, centerY, W, H - centerY);
     ctx.fillStyle = "#4b5563"; ctx.fillRect(0, centerY, W, 20);
-    // Road dashes (moving, camera follows car)
+    // Road dashes (moving)
     ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 4; ctx.setLineDash([40, 30]);
     ctx.lineDashOffset = -(box.x * SCALE * 0.5) % 70;
     ctx.beginPath(); ctx.moveTo(0, centerY + 10); ctx.lineTo(W, centerY + 10); ctx.stroke();
@@ -414,29 +374,25 @@ function drawBackground(scenario, centerX, centerY) {
     skyGrad.addColorStop(0, "#93c5fd"); skyGrad.addColorStop(1, "#dbeafe");
     ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, W, centerY);
     ctx.fillStyle = "#86efac"; ctx.fillRect(0, centerY, W, H - centerY);
-    // Crowd lines
     ctx.fillStyle = "#22c55e"; ctx.fillRect(0, centerY, W, 15);
 
   } else {
-    // Default room / warehouse
+    // Default room
     const wallGrad = ctx.createLinearGradient(0, 0, 0, centerY);
     wallGrad.addColorStop(0, "#f1f5f9"); wallGrad.addColorStop(1, "#e2e8f0");
     ctx.fillStyle = wallGrad; ctx.fillRect(0, 0, W, centerY);
-    // Floor
     ctx.fillStyle = "#f8fafc"; ctx.fillRect(0, centerY, W, H - centerY);
-    // Floor tiles
     ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 1;
     for (let gx = 0; gx < W; gx += 60) {
       ctx.beginPath(); ctx.moveTo(gx, centerY); ctx.lineTo(gx - 20, H); ctx.stroke();
     }
-    // Wall-floor border
     ctx.fillStyle = "#d97706"; ctx.fillRect(0, centerY - 14, W, 14);
   }
 }
 
-// ===== [4. PENANDA POSISI di semua skenario] =====
+// ===== POSITION MARKERS =====
 function drawPositionMarkers(centerX, centerY, scenario) {
-  if (scenario === "konstan" || scenario === "angkasa") return; // konstan: camera follows
+  if (scenario === "konstan") return;
 
   const maxDist = Math.floor((canvas.width / 2) / SCALE - 0.7);
   ctx.fillStyle = "#1e293b"; ctx.font = "bold 12px Inter"; ctx.textAlign = "center";
@@ -451,7 +407,7 @@ function drawPositionMarkers(centerX, centerY, scenario) {
   drawMark(centerX, "0 m");
   drawMark(centerX + maxDist * SCALE, `+${maxDist} m`);
   drawMark(centerX - maxDist * SCALE, `-${maxDist} m`);
-  // Midpoints
+
   if (maxDist >= 2) {
     const half = Math.floor(maxDist / 2);
     ctx.strokeStyle = "#f59e0b44"; ctx.lineWidth = 1;
@@ -463,7 +419,6 @@ function drawPositionMarkers(centerX, centerY, scenario) {
     });
   }
 
-  // Current position indicator
   const curXpx = centerX + box.x * SCALE;
   ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(curXpx, centerY); ctx.lineTo(curXpx, centerY + 40); ctx.stroke();
@@ -479,90 +434,81 @@ function drawScene() {
   const centerY = canvas.height / 2 + 70;
   const scenario = scenarioSelect.value;
 
-  // [5. Latar belakang kaya per skenario]
   drawBackground(scenario, centerX, centerY);
 
-  // Ground line
   if (scenario !== "konstan") {
     ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY); ctx.stroke();
   }
 
-  // [4. Penanda posisi]
   drawPositionMarkers(centerX, centerY, scenario);
 
-  // Determine object type
   let drawShape = "box";
   if (scenario === "searah" || scenario === "berlawanan" || scenario === "gesekan") drawShape = "table";
   else if (scenario === "konstan") drawShape = "car";
   else if (scenario === "tariktambang") drawShape = "rope";
   else if (scenario === "custom") drawShape = customObject.value;
-  else if (scenario === "angkasa") drawShape = "box";
 
   const isCar = drawShape === "car";
   const boxPixelX = isCar ? centerX : centerX + box.x * SCALE;
-  const boxPixelY = centerY - box.mass * 0.012 * SCALE - 40;
   const boxW = Math.max(80, Math.min(160, box.mass * 2 + 60));
   const boxH = Math.max(50, Math.min(100, box.mass * 1.2 + 40));
   const bpY = centerY - boxH;
 
   const forces = getEffectiveForces();
 
-  // [1/2. Ghost frictionless benda]
-  if (showCompare && !isCar && scenario !== "tariktambang" && scenario !== "angkasa") {
+  if (showCompare && !isCar && scenario !== "tariktambang") {
     const ghostX = centerX + ghostBox.x * SCALE;
     drawGhost(ghostX, bpY, boxW, boxH);
   }
 
-  // Draw the object
   if (drawShape === "table") {
     drawTable(boxPixelX, bpY, boxW, boxH);
   } else if (drawShape === "car") {
     const carW = 180, carH = 80;
     drawCar(boxPixelX, centerY - carH, carW, carH, wheelAngle);
   } else if (drawShape === "rope") {
-    const ropeLen = boxW * 3.5;
+    // Compact rope length so people stay inside lab canvas
+    const ropeHalfLen = 90;
     ctx.strokeStyle = "#78350f"; ctx.lineWidth = 8; ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(boxPixelX - ropeLen, bpY + boxH/2);
-    ctx.lineTo(boxPixelX + ropeLen, bpY + boxH/2); ctx.stroke();
+    ctx.moveTo(boxPixelX - ropeHalfLen, bpY + boxH/2);
+    ctx.lineTo(boxPixelX + ropeHalfLen, bpY + boxH/2); ctx.stroke();
     // Rope texture
     ctx.strokeStyle = "#92400e"; ctx.lineWidth = 2;
-    for (let tx = boxPixelX - ropeLen; tx < boxPixelX + ropeLen; tx += 10) {
+    for (let tx = boxPixelX - ropeHalfLen; tx < boxPixelX + ropeHalfLen; tx += 10) {
       ctx.beginPath(); ctx.moveTo(tx, bpY + boxH/2 - 4); ctx.lineTo(tx + 6, bpY + boxH/2 + 4); ctx.stroke();
     }
     // Center flag
     ctx.fillStyle = "#ef4444";
     ctx.beginPath(); ctx.moveTo(boxPixelX, bpY + boxH/2); ctx.lineTo(boxPixelX + 12, bpY + boxH/2 + 28); ctx.lineTo(boxPixelX - 12, bpY + boxH/2 + 28); ctx.fill();
-    // flag pole
     ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(boxPixelX, bpY + boxH/2); ctx.lineTo(boxPixelX, bpY + boxH/2 - 30); ctx.stroke();
     ctx.fillStyle = "#f59e0b"; ctx.font = "20px Inter"; ctx.textAlign = "center"; ctx.fillText("🚩", boxPixelX, bpY + boxH/2 - 28);
   } else {
-    // Box — use shadow + rounded rect
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.15)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
-    ctx.fillStyle = scenario === "angkasa" ? "#1e3a5f" : "#e2e8f0";
+    ctx.fillStyle = "#e2e8f0";
     ctx.beginPath(); ctx.roundRect(boxPixelX - boxW/2, bpY, boxW, boxH, 10); ctx.fill();
     ctx.restore();
-    ctx.strokeStyle = scenario === "angkasa" ? "#6366f1" : "#3b82f6"; ctx.lineWidth = 3;
+    ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.roundRect(boxPixelX - boxW/2, bpY, boxW, boxH, 10); ctx.stroke();
   }
 
   // Mass label
-  ctx.fillStyle = scenario === "angkasa" ? "#c7d2fe" : "#0f172a";
-  ctx.font = "bold 14px Inter"; ctx.textAlign = "center";
+  ctx.fillStyle = "#0f172a"; ctx.font = "bold 14px Inter"; ctx.textAlign = "center";
   ctx.fillText(`${box.mass} kg`, boxPixelX, bpY + boxH/2 + 5);
   ctx.font = "11px Inter"; ctx.fillStyle = "#475569";
   if (!isCar) ctx.fillText(`v = ${box.velocity.toFixed(1)} m/s`, boxPixelX, bpY + boxH/2 + 20);
 
-  // Draw people avatars
+  // Draw people avatars inside canvas bounds
   const personY = bpY + boxH/2;
   if (scenario === "tariktambang") {
+    const ropeHalfLen = 90;
     const nL = parseInt(numPeopleLeftInput.value) || 0;
     const nR = parseInt(numPeopleRightInput.value) || 0;
-    for (let i = 0; i < nL; i++) drawPerson(boxPixelX - ropeLen(boxW) - i * 46, personY, "right", "#ef4444", true, isPlaying ? elapsedTime : 0);
-    for (let i = 0; i < nR; i++) drawPerson(boxPixelX + ropeLen(boxW) + i * 46, personY, "left", "#10b981", true, isPlaying ? elapsedTime : 0);
+    for (let i = 0; i < nL; i++) drawPerson(boxPixelX - ropeHalfLen - 25 - i * 36, personY, "right", "#ef4444", true, isPlaying ? elapsedTime : 0);
+    for (let i = 0; i < nR; i++) drawPerson(boxPixelX + ropeHalfLen + 25 + i * 36, personY, "left", "#10b981", true, isPlaying ? elapsedTime : 0);
   } else if (scenario !== "konstan" && !(scenario === "custom" && customObject.value === "car")) {
     if (forces.f1 > 0) {
       const px = forces.dir1 === "right" ? boxPixelX - boxW/2 - 38 : boxPixelX + boxW/2 + 38;
@@ -589,28 +535,21 @@ function drawScene() {
     const lbl = scenario === "tariktambang" ? `Tarik Kanan: ${forces.f2}N` : `F2: ${forces.f2}N`;
     drawArrow(xStart, yForceBase - 38, forces.f2 * PIXELS_PER_NEWTON, forces.dir2, "#10b981", lbl);
   }
+  const frictionLimit = Math.max(0, parseFloat(frictionForceInput.value) || 0);
   if (Math.abs(fFric) > 0.01) {
     const fDir = fFric > 0 ? "right" : "left";
     const xStart = fDir === "right" ? boxPixelX - boxW/2 : boxPixelX + boxW/2;
-    drawArrow(xStart, centerY - 18, Math.abs(fFric) * PIXELS_PER_NEWTON, fDir, "#8b5cf6", `Gesek: ${Math.abs(fFric).toFixed(0)}N`);
+    const fricLbl = (Math.abs(box.velocity) < 0.001 && frictionLimit > Math.abs(fFric))
+      ? `f_gesek: ${Math.abs(fFric).toFixed(0)}N (Maks ${frictionLimit}N)`
+      : `f_gesek: ${Math.abs(fFric).toFixed(0)}N`;
+    drawArrow(xStart, centerY - 18, Math.abs(fFric) * PIXELS_PER_NEWTON, fDir, "#8b5cf6", fricLbl);
   }
   const net = parseFloat(netForceValue.textContent);
   if (Math.abs(net) > 0.01) {
     const dir = net > 0 ? "right" : "left";
     drawArrow(boxPixelX, yForceBase - 76, Math.abs(net) * PIXELS_PER_NEWTON, dir, "#f59e0b", `ΣF: ${Math.abs(net).toFixed(1)}N`);
   }
-
-  // Angkasa: label "tidak ada gesekan"
-  if (scenario === "angkasa") {
-    ctx.fillStyle = "#6366f1"; ctx.font = "bold 13px Inter"; ctx.textAlign = "left";
-    ctx.fillText("🚀 Ruang Angkasa — μ = 0, Tidak Ada Hambatan", 14, 22);
-    ctx.fillStyle = "#818cf8"; ctx.font = "12px Inter";
-    ctx.fillText("Hukum I Newton berlaku sempurna di sini!", 14, 40);
-  }
 }
-
-// Helper for rope length
-function ropeLen(boxW) { return boxW * 3.2; }
 
 // ===== PHYSICS UPDATE =====
 function updatePhysics(dt) {
@@ -620,7 +559,7 @@ function updatePhysics(dt) {
   const { forces, fApp, fFric } = computeNet();
   const frictionLimit = Math.max(0, parseFloat(frictionForceInput.value) || 0);
 
-  // Static check
+  // Static/kinetic check
   if (Math.abs(box.velocity) < 0.001) {
     if (Math.abs(fApp) <= frictionLimit) {
       box.velocity = 0;
@@ -640,7 +579,7 @@ function updatePhysics(dt) {
   if (Math.abs(box.velocity) < 1e-4 && Math.abs(net) < 0.01) box.velocity = 0;
   box.x += box.velocity * dt;
 
-  // [3. Wheel rotation] — track rotation by velocity
+  // Wheel rotation
   wheelAngle += box.velocity * dt * 3.5;
 
   // Ghost frictionless
@@ -650,12 +589,11 @@ function updatePhysics(dt) {
     ghostBox.x += ghostBox.velocity * dt;
   }
 
-  // Boundary stop (not car/angkasa)
+  // Boundary stop (not car)
   const isCar = scenarioSelect.value === "konstan" ||
     (scenarioSelect.value === "custom" && customObject.value === "car");
-  const isAngkasa = scenarioSelect.value === "angkasa";
 
-  if (!isCar && !isAngkasa) {
+  if (!isCar) {
     const maxDist = (canvas.width / 2) / SCALE - 0.8;
     if (box.x >= maxDist || box.x <= -maxDist) {
       box.x = Math.sign(box.x) * maxDist;
@@ -685,8 +623,15 @@ function simulationLoop(ts) {
 
 // ===== RESET =====
 function resetSim() {
-  box.x = 0; box.velocity = 0; box.acceleration = 0;
-  ghostBox.x = 0; ghostBox.velocity = 0;
+  box.x = 0;
+  box.acceleration = 0;
+  if (scenarioSelect.value === "konstan") {
+    box.velocity = 2;
+    ghostBox.velocity = 2;
+  } else {
+    box.velocity = 0;
+    ghostBox.velocity = 0;
+  }
   wheelAngle = 0;
   elapsedTime = 0; lastTime = 0; isPlaying = false;
   btnPlayPause.textContent = "Mulai Simulasi";
@@ -714,17 +659,13 @@ scenarioSelect.addEventListener("change", (e) => {
   customControls.style.display = val === "custom" ? "block" : "none";
   compareGroup.style.display = (val === "gesekan" || val === "konstan") ? "block" : "none";
 
-  // Show/hide friction row based on angkasa
-  frictionForceInput.parentElement.parentElement.style.display = val === "angkasa" ? "none" : "";
-
   // Preset values
   const presets = {
     searah:      { f1: 150, d1: "right", f2: 80, d2: "right", fr: 0 },
     berlawanan:  { f1: 120, d1: "right", f2: 80, d2: "left",  fr: 0 },
     tariktambang:{ f1: 0,   d1: "right", f2: 0,  d2: "right", fr: 0 },
-    gesekan:     { f1: 100, d1: "right", f2: 0,  d2: "right", fr: 150 },
+    gesekan:     { f1: 200, d1: "right", f2: 0,  d2: "right", fr: 100 },
     konstan:     { f1: 120, d1: "right", f2: 0,  d2: "right", fr: 120 },
-    angkasa:     { f1: 0,   d1: "right", f2: 0,  d2: "right", fr: 0 },
     custom:      { f1: 0,   d1: "right", f2: 0,  d2: "right", fr: 0 },
   };
   const p = presets[val] || presets.custom;
@@ -732,18 +673,12 @@ scenarioSelect.addEventListener("change", (e) => {
   force2Input.value = p.f2; dir2Select.value = p.d2;
   frictionForceInput.value = p.fr;
 
-  if (val === "konstan") { box.velocity = 2; ghostBox.velocity = 2; }
-  if (val === "angkasa") frictionForceInput.value = 0;
-
-  chartTitle.textContent = val === "angkasa"
-    ? "Grafik Kecepatan v vs Waktu — Tidak Ada Perlambatan di Ruang Angkasa!"
-    : showCompare ? "Grafik v: Benda Nyata vs Benda Ideal (μ=0)"
-    : "Grafik Kecepatan v vs Waktu t";
+  chartTitle.textContent = showCompare ? "Grafik v: Benda Nyata vs Benda Ideal (μ=0)" : "Grafik Kecepatan v vs Waktu t";
 
   resetSim();
 });
 
-// ===== [7. COMPARE TOGGLE] =====
+// ===== COMPARE TOGGLE =====
 btnCompare?.addEventListener("click", () => {
   showCompare = !showCompare;
   btnCompare.classList.toggle("active", showCompare);
@@ -759,7 +694,7 @@ btnCompare?.addEventListener("click", () => {
 // ===== PLAY/PAUSE =====
 btnPlayPause.addEventListener("click", () => {
   isPlaying = !isPlaying;
-  btnPlayPause.textContent = isPlaying ? "Jeda Simulasi" : "Lanjutkan";
+  btnPlayPause.textContent = isPlaying ? "Jeda Simulasi" : "Mulai Simulasi";
   btnPlayPause.style.backgroundColor = isPlaying ? "#f59e0b" : "";
   if (isPlaying) toggleInputs(true); else toggleInputs(false);
 });
