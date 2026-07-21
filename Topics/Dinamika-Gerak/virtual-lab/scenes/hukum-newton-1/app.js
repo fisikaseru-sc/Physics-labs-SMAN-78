@@ -622,7 +622,6 @@ function updatePhysics(dt) {
     if (box.x >= maxDist || box.x <= -maxDist) {
       box.x = Math.sign(box.x) * maxDist;
       pushChart(elapsedTime, box.velocity, ghostBox.velocity);
-      box.velocity = 0;
       isPlaying = false;
       btnPlayPause.textContent = "Mulai Simulasi";
       btnPlayPause.style.backgroundColor = "";
