@@ -323,6 +323,29 @@ btnPlayPause.addEventListener("click", () => {
 });
 btnReset.addEventListener("click", resetSim);
 
+const btnViewSim = document.getElementById("btnViewSim");
+const btnViewChart = document.getElementById("btnViewChart");
+const simulationContainer = document.querySelector(".simulation-container");
+const chartPanel = document.querySelector(".chart-panel");
+const overlayStats = document.getElementById("overlayStats");
+
+btnViewSim?.addEventListener("click", () => {
+  btnViewSim.classList.add("active");
+  btnViewChart.classList.remove("active");
+  simulationContainer.classList.remove("hidden");
+  overlayStats.classList.remove("hidden");
+  chartPanel.classList.remove("active");
+  drawScene();
+});
+btnViewChart?.addEventListener("click", () => {
+  btnViewChart.classList.add("active");
+  btnViewSim.classList.remove("active");
+  simulationContainer.classList.add("hidden");
+  overlayStats.classList.add("hidden");
+  chartPanel.classList.add("active");
+});
+
+
 modeSingle.addEventListener("click", () => {
   mode = "single";
   modeSingle.classList.add("active"); modeMoving.classList.remove("active");

@@ -355,6 +355,29 @@ btnPlayPause.addEventListener("click", () => {
   btnPlayPause.textContent = isAnimating ? "Hentikan Animasi" : "Animasi Bergoyang";
   if (!isAnimating) swayAngle = 0;
 });
+
+const btnViewSim = document.getElementById("btnViewSim");
+const btnViewChart = document.getElementById("btnViewChart");
+const simulationContainer = document.querySelector(".simulation-container");
+const chartPanel = document.querySelector(".chart-panel");
+const overlayStats = document.getElementById("overlayStats");
+
+btnViewSim?.addEventListener("click", () => {
+  btnViewSim.classList.add("active");
+  btnViewChart.classList.remove("active");
+  simulationContainer.classList.remove("hidden");
+  overlayStats.classList.remove("hidden");
+  chartPanel.classList.remove("active");
+  drawScene();
+});
+btnViewChart?.addEventListener("click", () => {
+  btnViewChart.classList.add("active");
+  btnViewSim.classList.remove("active");
+  simulationContainer.classList.add("hidden");
+  overlayStats.classList.add("hidden");
+  chartPanel.classList.add("active");
+});
+
 btnReset.addEventListener("click", () => {
   isAnimating = false; swayAngle = 0;
   btnPlayPause.textContent = "Animasi Bergoyang";

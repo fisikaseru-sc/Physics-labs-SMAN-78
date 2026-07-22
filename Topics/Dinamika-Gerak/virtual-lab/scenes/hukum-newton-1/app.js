@@ -498,9 +498,9 @@ function drawScene() {
     }
     ctx.fillStyle = "#ef4444";
     ctx.beginPath(); ctx.moveTo(boxPixelX, bpY + boxH/2); ctx.lineTo(boxPixelX + 12, bpY + boxH/2 + 28); ctx.lineTo(boxPixelX - 12, bpY + boxH/2 + 28); ctx.fill();
-    ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 3;
+    ctx.fillStyle = "#f59e0b";
     ctx.beginPath(); ctx.moveTo(boxPixelX, bpY + boxH/2); ctx.lineTo(boxPixelX, bpY + boxH/2 - 30); ctx.stroke();
-    ctx.fillStyle = "#f59e0b"; ctx.font = "20px Inter"; ctx.textAlign = "center"; ctx.fillText("🚩", boxPixelX, bpY + boxH/2 - 28);
+    ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(boxPixelX, bpY + boxH/2 - 30, 8, 0, Math.PI*2); ctx.fill(); // Red marker instead of emoji
   } else {
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.15)"; ctx.shadowBlur = 12; ctx.shadowOffsetY = 4;
@@ -726,6 +726,28 @@ btnPlayPause.addEventListener("click", () => {
 });
 
 btnReset.addEventListener("click", resetSim);
+
+const btnViewSim = document.getElementById("btnViewSim");
+const btnViewChart = document.getElementById("btnViewChart");
+const simulationContainer = document.querySelector(".simulation-container");
+const chartPanel = document.querySelector(".chart-panel");
+const overlayStats = document.getElementById("overlayStats");
+
+btnViewSim?.addEventListener("click", () => {
+  btnViewSim.classList.add("active");
+  btnViewChart.classList.remove("active");
+  simulationContainer.classList.remove("hidden");
+  overlayStats.classList.remove("hidden");
+  chartPanel.classList.remove("active");
+  drawScene();
+});
+btnViewChart?.addEventListener("click", () => {
+  btnViewChart.classList.add("active");
+  btnViewSim.classList.remove("active");
+  simulationContainer.classList.add("hidden");
+  overlayStats.classList.add("hidden");
+  chartPanel.classList.add("active");
+});
 
 btnSetVelocity?.addEventListener("click", () => {
   let val = Math.max(-20, Math.min(20, parseFloat(customVelocity.value) || 0));

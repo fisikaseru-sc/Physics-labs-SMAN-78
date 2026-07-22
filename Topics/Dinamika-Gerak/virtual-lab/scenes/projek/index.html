@@ -9,9 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../../css/style.css" />
     <style>
-      .chart-panel { background: var(--panel-bg); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--panel-border); border-radius: 12px; padding: 14px 18px; margin-top: 10px; }
-      .chart-panel h3 { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 8px; }
-      .chart-wrapper { position: relative; height: 130px; }
+      /* CSS from global style.css is used for chart-panel and view-toggle */.chart-wrapper { position: relative; height: 130px; }
       .preset-btn { padding: 7px 10px; border-radius: 9px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.5); cursor: pointer; font-size: 0.75rem; font-weight: 600; color: var(--text-primary); transition: all 0.2s; flex: 1; text-align: center; }
       .preset-btn.active, .preset-btn:hover { background: #8b5cf6; color: #fff; border-color: #8b5cf6; }
       .scenario-controls { display: none; }
@@ -28,14 +26,18 @@
           </div>
         </div>
         <div class="nav-tabs">
+          <div class="view-toggle" style="margin-bottom:0;">
+            <button class="view-btn active" id="btnViewSim">🎮 Simulasi</button>
+            <button class="view-btn" id="btnViewChart">📈 Grafik Hasil</button>
+          </div>
+          <div class="tab-btn active"><span>🚀</span><strong>Projek Akhir</strong></div>
           <a href="../../index.html" class="tab-btn" style="text-decoration:none"><span>🏠</span><strong>Beranda</strong></a>
-          <div class="tab-btn active"><span>7️⃣</span><strong>Sandbox Projek</strong></div>
         </div>
       </header>
 
       <main>
         <div class="simulation-area">
-          <div class="overlay-stats">
+          <div class="overlay-stats" id="overlayStats">
             <div class="stat-box">
               <span class="label" id="s1lbl">Kecepatan (v)</span>
               <div><span class="value" id="velValue">0.00</span><span class="unit" id="s1unit">m/s</span></div>

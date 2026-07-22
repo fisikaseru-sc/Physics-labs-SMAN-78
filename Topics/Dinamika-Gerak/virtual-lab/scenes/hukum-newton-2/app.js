@@ -35,6 +35,12 @@ const chartLabel = document.getElementById("chartLabel");
 const btnPlayPause = document.getElementById("btnPlayPause");
 const btnReset = document.getElementById("btnReset");
 
+const btnViewSim = document.getElementById("btnViewSim");
+const btnViewChart = document.getElementById("btnViewChart");
+const simulationContainer = document.querySelector(".simulation-container");
+const chartPanel = document.querySelector(".chart-panel");
+const overlayStats = document.getElementById("overlayStats");
+
 // ===== STATE =====
 let isPlaying = false;
 let elapsedTime = 0;
@@ -42,11 +48,15 @@ let lastTime = 0;
 let simSpeed = 1.0;
 let currentScenario = "trolley";
 
+// Dynamic Camera state
+let camX = 0;
+let camY = 0;
+
 // Per-scenario state
 const trolleyState = { x: 0, v: 0 };
-const raceState = { xCar: 0, xTruck: 0, vCar: 0, vTruck: 0 };
-const rocketState = { y: 0, v: 0, particles: [], flame: 0 };
-const brakingState = { xCar: 0, vCar: 0, xBox: 0, vBox: 0, braking: false };
+const raceState = { xCar: 0, xTruck: 0, vCar: 0, vTruck: 0, winner: null, finishTime: 0 };
+const rocketState = { y: 0, v: 0, particles: [], flame: 0, reachedTarget: false, targetY: 500 };
+const brakingState = { xCar: 0, vCar: 0, xBox: 0, vBox: 0, yBox: 0, boxFallen: false, braking: false, finished: false };
 
 // ===== CANVAS RESIZE =====
 function resizeCanvas() {
@@ -96,7 +106,21 @@ function drawArrow(x, y, dx, dy, color, label) {
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx - nx * ah, y + dy - ny * ah); ctx.stroke();
   const px = -ny * 6, py = nx * 6;
   ctx.beginPath(); ctx.moveTo(x + dx, y + dy); ctx.lineTo(x + dx - nx * ah + px, y + dy - ny * ah + py); ctx.lineTo(x + dx - nx * ah - px, y + dy - ny * ah - py); ctx.fill();
-  if (label) { ctx.font = "bold 12px Inter"; ctx.textAlign = "center"; ctx.fillText(label, x + dx / 2 + px * 2, y + dy / 2 + py * 2 - 6); }
+  if (label) { drawLabel(label, x + dx / 2 + px * 2, y + dy / 2 + py * 2 - 12, color, "#ffffff"); }
+}
+
+function drawLabel(text, x, y, bgCol, fgCol = "#ffffff", fontSize = 12) {
+  ctx.font = `bold ${fontSize}px Inter`;
+  const m = ctx.measureText(text);
+  const w = m.width + 12;
+  const h = fontSize + 8;
+  ctx.fillStyle = bgCol;
+  ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2 - 2, w, h, 4); ctx.fill();
+  ctx.fillStyle = fgCol;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y);
+  ctx.textBaseline = "alphabetic"; // reset
 }
 
 function drawGround(y) {
@@ -156,8 +180,7 @@ function drawTrolleyScene() {
   drawWheel(cx + 35, groundY, 14, rot, "#475569");
 
   // Mass text
-  ctx.fillStyle = "#1e293b"; ctx.font = "bold 14px Inter"; ctx.textAlign = "center";
-  ctx.fillText(`m = ${m} kg`, cx, groundY - 38);
+  drawLabel(`m = ${m} kg`, cx, groundY - 45, "rgba(30,41,59,0.75)", "#ffffff", 14);
 
   // Person pushing (stick figure)
   const personX = cx - 90, personY = groundY;
@@ -189,75 +212,216 @@ function drawTrolleyScene() {
   }
 }
 
-// ===== RACE DRAW =====
+// ===== RACE DRAW (TOP-DOWN POV & DYNAMIC CAMERA) =====
 function drawRaceScene() {
   const F = Math.max(1, parseFloat(raceForce.value) || 10000);
   const mCar = Math.max(500, parseFloat(carMass.value) || 1000);
   const mTruck = Math.max(1000, parseFloat(truckMass.value) || 8000);
   const aCar = F / mCar, aTruck = F / mTruck;
 
-  const groundY = canvas.height * 0.72;
+  const PX_PER_M = 1; // 1 px = 1 metre (xCar is in metres now)
+  const finishDistance = 1000; // 1000m
   const startX = 60;
-  const carX = startX + raceState.xCar;
-  const truckX = startX + raceState.xTruck;
+  const finishX = startX + finishDistance * PX_PER_M;
+
+  // Dynamic Camera tracking leading vehicle (in metres, convert to px)
+  const leadingX = Math.max(raceState.xCar, raceState.xTruck);
+  const targetCamX = Math.max(0, (leadingX * PX_PER_M) - canvas.width * 0.35);
+  camX += (targetCamX - camX) * 0.1;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawGround(groundY);
 
-  // Road markings
-  ctx.strokeStyle = "#94a3b844"; ctx.lineWidth = 3; ctx.setLineDash([30, 20]);
-  ctx.beginPath(); ctx.moveTo(0, groundY - 25); ctx.lineTo(canvas.width, groundY - 25); ctx.stroke();
+  ctx.save();
+  ctx.translate(-camX, 0);
+
+  // Background grass & circuit area
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(camX - 50, 0, canvas.width + 100, canvas.height);
+
+  // Track lanes (Top View)
+  const laneH = canvas.height * 0.35;
+  const lane1Y = canvas.height * 0.12;
+  const lane2Y = canvas.height * 0.52;
+
+  // Asphalt Track
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(-50, lane1Y, finishX + 400, laneH * 2 + 20);
+
+  // Track Curbs (Red and White Kerbs at top and bottom edges)
+  const curbStep = 20;
+  for (let x = -50; x < finishX + 400; x += curbStep) {
+    const isRed = Math.floor(x / curbStep) % 2 === 0;
+    ctx.fillStyle = isRed ? "#ef4444" : "#ffffff";
+    // Top curb
+    ctx.fillRect(x, lane1Y - 8, curbStep, 8);
+    // Middle divider kerb
+    ctx.fillRect(x, lane1Y + laneH + 6, curbStep, 8);
+    // Bottom curb
+    ctx.fillRect(x, lane2Y + laneH + 12, curbStep, 8);
+  }
+
+  // Dashed lane lines
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([25, 20]);
+  ctx.beginPath();
+  ctx.moveTo(-50, lane1Y + laneH / 2);
+  ctx.lineTo(finishX + 400, lane1Y + laneH / 2);
+  ctx.moveTo(-50, lane2Y + laneH / 2);
+  ctx.lineTo(finishX + 400, lane2Y + laneH / 2);
+  ctx.stroke();
   ctx.setLineDash([]);
 
-  // Car (sports car, smaller, lower)
-  const carW = 90, carH = 36;
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.15)"; ctx.shadowBlur = 8;
-  // Body
-  ctx.fillStyle = "#ef4444";
-  ctx.beginPath(); ctx.roundRect(carX, groundY - carH - 14, carW, carH, 6); ctx.fill();
-  // Windshield
-  ctx.fillStyle = "#bfdbfe";
-  ctx.beginPath(); ctx.moveTo(carX + 25, groundY - carH - 14); ctx.lineTo(carX + 45, groundY - carH - 26); ctx.lineTo(carX + 65, groundY - carH - 26); ctx.lineTo(carX + 75, groundY - carH - 14); ctx.fill();
-  ctx.restore();
-  drawWheel(carX + 20, groundY - 14, 13, raceState.vCar * elapsedTime * 2, "#1e293b");
-  drawWheel(carX + 68, groundY - 14, 13, raceState.vCar * elapsedTime * 2, "#1e293b");
-  ctx.fillStyle = "#1e293b"; ctx.font = "bold 11px Inter"; ctx.textAlign = "center";
-  ctx.fillText(`Mobil Sport`, carX + carW/2, groundY - carH - 18);
-  ctx.fillText(`m=${mCar}kg, a=${aCar.toFixed(1)}m/s²`, carX + carW/2, groundY - carH - 6);
-  ctx.fillText(`v=${raceState.vCar.toFixed(1)}m/s`, carX + carW/2, groundY + 14);
-
-  // Truck (bigger, taller)
-  const truckY = groundY - 38;
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.15)"; ctx.shadowBlur = 8;
-  ctx.fillStyle = "#3b82f6";
-  ctx.beginPath(); ctx.roundRect(truckX, truckY - 28, 150, 55, 6); ctx.fill();
-  ctx.restore();
-  drawWheel(truckX + 25, groundY - 14, 16, raceState.vTruck * elapsedTime * 1.5, "#1e293b");
-  drawWheel(truckX + 80, groundY - 14, 16, raceState.vTruck * elapsedTime * 1.5, "#1e293b");
-  drawWheel(truckX + 125, groundY - 14, 16, raceState.vTruck * elapsedTime * 1.5, "#1e293b");
-  ctx.fillStyle = "#fff"; ctx.font = "bold 10px Inter"; ctx.textAlign = "center";
-  ctx.fillText(`Truk`, truckX + 75, truckY - 22);
-  ctx.fillText(`m=${mTruck}kg, a=${aTruck.toFixed(2)}m/s²`, truckX + 75, truckY - 10);
-  ctx.fillStyle = "#1e293b"; ctx.fillText(`v=${raceState.vTruck.toFixed(2)}m/s`, truckX + 75, groundY + 18);
-
-  // Force arrows
-  if (F > 0) {
-    drawArrow(carX + carW, groundY - carH/2 - 14, Math.min(60, F * 0.003 + 15), 0, "#ef4444", `F=${F}N`);
-    drawArrow(truckX + 150, truckY + 14, Math.min(60, F * 0.003 + 15), 0, "#3b82f6", `F=${F}N`);
+  // Distance Markers along the track
+  ctx.font = "bold 12px Inter";
+  ctx.fillStyle = "#94a3b8";
+  ctx.textAlign = "center";
+  for (let dist = 100; dist <= 1000; dist += 100) {
+    const markX = startX + dist;
+    ctx.strokeStyle = "#64748b88";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(markX, lane1Y);
+    ctx.lineTo(markX, lane2Y + laneH);
+    ctx.stroke();
+    ctx.fillText(`${dist}m`, markX, lane1Y - 14);
   }
+
+  // Start Line
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(startX, lane1Y, 8, laneH * 2 + 20);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "bold 11px Inter";
+  ctx.fillText("START", startX - 22, lane1Y - 14);
+
+  // Checkered Finish Line
+  const finW = 24;
+  for (let y = lane1Y; y < lane2Y + laneH + 12; y += 12) {
+    for (let x = finishX; x < finishX + finW; x += 12) {
+      const isBlack = (Math.floor(x / 12) + Math.floor(y / 12)) % 2 === 0;
+      ctx.fillStyle = isBlack ? "#000000" : "#ffffff";
+      ctx.fillRect(x, y, 12, 12);
+    }
+  }
+  ctx.fillStyle = "#10b981";
+  ctx.font = "bold 13px Inter";
+  ctx.fillText("FINISH (1000m)", finishX + 12, lane1Y - 14);
+
+  // --- VEHICLE 1: MOBIL SPORT (TOP VIEW) ---
+  const carX = startX + raceState.xCar * PX_PER_M;
+  const carY = lane1Y + laneH / 2;
+  ctx.save();
+  ctx.translate(carX, carY);
+
+  // Headlight Beams (Glow ahead)
+  const headGrad = ctx.createRadialGradient(80, 0, 5, 120, 0, 45);
+  headGrad.addColorStop(0, "rgba(254, 240, 138, 0.7)");
+  headGrad.addColorStop(1, "rgba(254, 240, 138, 0)");
+  ctx.fillStyle = headGrad;
+  ctx.beginPath();
+  ctx.moveTo(35, -12); ctx.lineTo(130, -35); ctx.lineTo(130, 35); ctx.lineTo(35, 12);
+  ctx.fill();
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath(); ctx.roundRect(-38, -16, 80, 36, 10); ctx.fill();
+
+  // Wheels (Top view tires)
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(-26, -20, 16, 6);
+  ctx.fillRect(16, -20, 16, 6);
+  ctx.fillRect(-26, 14, 16, 6);
+  ctx.fillRect(16, 14, 16, 6);
+
+  // Car Body (Aerodynamic Red Sports Car)
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath();
+  ctx.moveTo(-35, -12);
+  ctx.quadraticCurveTo(0, -18, 30, -10);
+  ctx.lineTo(35, 0);
+  ctx.lineTo(30, 10);
+  ctx.quadraticCurveTo(0, 18, -35, 12);
+  ctx.closePath();
+  ctx.fill();
+
+  // Racing Stripes
+  ctx.fillStyle = "#fef08a";
+  ctx.fillRect(-35, -3, 68, 6);
+
+  // Windshield & Cockpit
+  ctx.fillStyle = "#1e293b";
+  ctx.beginPath(); ctx.ellipse(0, 0, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#38bdf8";
+  ctx.beginPath(); ctx.ellipse(2, 0, 10, 6, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Rear Spoiler Wing
+  ctx.fillStyle = "#b91c1c";
+  ctx.fillRect(-36, -16, 6, 32);
+
+  ctx.restore();
+
+  // Label Mobil Sport
+  drawLabel(`Mobil Sport: ${raceState.vCar.toFixed(1)} m/s (a=${aCar.toFixed(1)}m/s²)`, carX, carY - 30, "#ef4444", "#ffffff", 11);
+
+
+  // --- VEHICLE 2: TRUK BEBAN (TOP VIEW) ---
+  const truckX = startX + raceState.xTruck * PX_PER_M;
+  const truckY = lane2Y + laneH / 2;
+  ctx.save();
+  ctx.translate(truckX, truckY);
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
+  ctx.beginPath(); ctx.roundRect(-60, -22, 120, 48, 8); ctx.fill();
+
+  // Truck Wheels (6 Wheels)
+  ctx.fillStyle = "#020617";
+  ctx.fillRect(-52, -25, 18, 6); ctx.fillRect(-28, -25, 18, 6); ctx.fillRect(32, -25, 18, 6);
+  ctx.fillRect(-52, 19, 18, 6); ctx.fillRect(-28, 19, 18, 6); ctx.fillRect(32, 19, 18, 6);
+
+  // Cargo Trailer Body
+  ctx.fillStyle = "#1e40af";
+  ctx.beginPath(); ctx.roundRect(-58, -20, 78, 40, 4); ctx.fill();
+  ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 1.5;
+  for (let rx = -50; rx <= 10; rx += 10) {
+    ctx.beginPath(); ctx.moveTo(rx, -20); ctx.lineTo(rx, 20); ctx.stroke();
+  }
+
+  // Connection hitch
+  ctx.fillStyle = "#475569";
+  ctx.fillRect(20, -5, 10, 10);
+
+  // Cabin Top View
+  ctx.fillStyle = "#2563eb";
+  ctx.beginPath(); ctx.roundRect(28, -20, 30, 40, 6); ctx.fill();
+
+  // Windshield & Roof lights
+  ctx.fillStyle = "#93c5fd";
+  ctx.fillRect(45, -15, 8, 30);
+  ctx.fillStyle = "#f59e0b";
+  ctx.fillRect(30, -18, 4, 4); ctx.fillRect(30, 14, 4, 4);
+
+  // Side Mirrors
+  ctx.fillStyle = "#1e3a8a";
+  ctx.fillRect(42, -24, 4, 5); ctx.fillRect(42, 19, 4, 5);
+
+  ctx.restore();
+
+  // Label Truk
+  drawLabel(`Truk Beban: ${raceState.vTruck.toFixed(1)} m/s (a=${aTruck.toFixed(2)}m/s²)`, truckX, truckY - 35, "#3b82f6", "#ffffff", 11);
+
+  ctx.restore();
 
   velValue.textContent = `${raceState.vCar.toFixed(1)} / ${raceState.vTruck.toFixed(2)}`;
   accelValue.textContent = `${aCar.toFixed(2)} / ${aTruck.toFixed(2)}`;
   netForceValue.textContent = F.toFixed(0);
   timeValue.textContent = elapsedTime.toFixed(2);
-  statusMessage.textContent = `a_mobil=${aCar.toFixed(2)} m/s² >> a_truk=${aTruck.toFixed(2)} m/s² — Hukum II Newton!`;
+  statusMessage.textContent = raceState.winner ? `Balapan Selesai!` : `a_mobil=${aCar.toFixed(2)} m/s² >> a_truk=${aTruck.toFixed(2)} m/s² — Hukum II Newton!`;
   statusMessage.style.borderColor = "#3b82f6";
-  conclusionText.textContent = `Gaya mesin sama F = ${F} N. a = F/m → Mobil sport (${mCar}kg): a = ${aCar.toFixed(2)} m/s². Truk (${mTruck}kg): a = ${aTruck.toFixed(2)} m/s². Massa lebih besar → percepatan lebih kecil (Hukum II Newton).`;
+  conclusionText.textContent = `Gaya mesin sama F = ${F} N. a = F/m → Mobil sport (${mCar}kg): a = ${aCar.toFixed(2)} m/s². Truk (${mTruck}kg): a = ${aTruck.toFixed(2)} m/s². Massa lebih kecil meningkatkan percepatan secara drastis (Hukum II Newton).`;
 }
 
-// ===== ROCKET DRAW =====
+// ===== ROCKET DRAW (TARGET FINISH LINE & DYNAMIC CAMERA) =====
 function drawRocketScene() {
   const F = Math.max(0, parseFloat(rocketThrust.value) || 2000);
   const m = 100;
@@ -266,83 +430,156 @@ function drawRocketScene() {
   const netF = F - W;
   const a = netF / m;
 
+  const targetAltitude = 500; // Target Finish line at 500m
+  const launchPadY = canvas.height * 0.85;
+
+  // Dynamic Camera Y tracking rocket height
+  const targetCamY = Math.max(0, rocketState.y - canvas.height * 0.4);
+  camY += (targetCamY - camY) * 0.1;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const cx = canvas.width / 2;
-  const launchPadY = canvas.height * 0.85;
-  const rocketY = launchPadY - 80 - rocketState.y;
-
-  // Sky gradient
+  // Environment Gradient based on camera altitude
+  const altRatio = Math.min(1, camY / 600);
   const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  skyGrad.addColorStop(0, "#0f172a"); skyGrad.addColorStop(0.6, "#1e3a5f"); skyGrad.addColorStop(1, "#f59e0b44");
+  if (altRatio < 0.3) {
+    skyGrad.addColorStop(0, "#1e3a5f"); skyGrad.addColorStop(1, "#38bdf8");
+  } else if (altRatio < 0.7) {
+    skyGrad.addColorStop(0, "#0f172a"); skyGrad.addColorStop(0.5, "#1e3a5f"); skyGrad.addColorStop(1, "#3b82f6");
+  } else {
+    skyGrad.addColorStop(0, "#020617"); skyGrad.addColorStop(0.7, "#0f172a"); skyGrad.addColorStop(1, "#1e1b4b");
+  }
   ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Stars
-  for (let i = 0; i < 40; i++) {
-    const sx = (cx * Math.sin(i * 137.5) + cx * 0.9) % canvas.width;
-    const sy = ((i * 73.1) % (launchPadY * 0.6));
-    ctx.fillStyle = `rgba(255,255,255,${0.3 + (i % 5) * 0.12})`;
-    ctx.beginPath(); ctx.arc(sx, sy, 1.5, 0, Math.PI * 2); ctx.fill();
+  // Stars in high atmosphere & space
+  if (altRatio > 0.2) {
+    for (let i = 0; i < 50; i++) {
+      const sx = (i * 137.5) % canvas.width;
+      const sy = (i * 73.1) % canvas.height;
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, altRatio * 1.2 * (0.4 + (i % 5) * 0.12))})`;
+      ctx.beginPath(); ctx.arc(sx, sy, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
-  // Launch pad
-  ctx.fillStyle = "#94a3b8";
-  ctx.fillRect(cx - 60, launchPadY, 120, 20);
-  ctx.fillStyle = "#64748b";
-  ctx.fillRect(cx - 40, launchPadY - 10, 80, 15);
+  // Earth Curvature visible in deep space
+  if (camY > 300) {
+    ctx.save();
+    ctx.fillStyle = "#0284c7";
+    ctx.beginPath();
+    ctx.ellipse(canvas.width / 2, canvas.height + (camY - 300) * 0.5 + 400, canvas.width * 1.2, 500, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
-  // Rocket body
   ctx.save();
-  ctx.shadowColor = "#ef4444"; ctx.shadowBlur = 20;
-  ctx.fillStyle = "#e2e8f0";
-  ctx.beginPath(); ctx.roundRect(cx - 20, rocketY - 80, 40, 110, 8); ctx.fill();
-  // Nose cone
-  ctx.fillStyle = "#ef4444";
-  ctx.beginPath(); ctx.moveTo(cx, rocketY - 110); ctx.lineTo(cx - 20, rocketY - 80); ctx.lineTo(cx + 20, rocketY - 80); ctx.fill();
-  // Windows
-  ctx.fillStyle = "#bfdbfe";
-  ctx.beginPath(); ctx.arc(cx, rocketY - 60, 10, 0, Math.PI * 2); ctx.fill();
-  // Fins
-  ctx.fillStyle = "#64748b";
-  ctx.beginPath(); ctx.moveTo(cx - 20, rocketY + 30); ctx.lineTo(cx - 40, rocketY + 60); ctx.lineTo(cx - 20, rocketY + 60); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(cx + 20, rocketY + 30); ctx.lineTo(cx + 40, rocketY + 60); ctx.lineTo(cx + 20, rocketY + 60); ctx.fill();
+  ctx.translate(0, camY);
+
+  const cx = canvas.width / 2;
+  const rocketY = launchPadY - 80 - rocketState.y;
+
+  // Ground level launchpad (visible when camera near ground)
+  if (camY < canvas.height) {
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillRect(cx - 70, launchPadY, 140, 20);
+    ctx.fillStyle = "#475569";
+    ctx.fillRect(cx - 45, launchPadY - 10, 90, 15);
+  }
+
+  // Altitude Ruler Grid Lines (100m, 200m, 300m, 400m, 500m TARGET)
+  ctx.font = "bold 12px Inter";
+  ctx.textAlign = "left";
+  for (let alt = 100; alt <= targetAltitude; alt += 100) {
+    const markY = launchPadY - 80 - alt;
+    const isFinish = (alt === targetAltitude);
+    ctx.strokeStyle = isFinish ? "#f59e0b" : "rgba(255,255,255,0.3)";
+    ctx.lineWidth = isFinish ? 3 : 1;
+    ctx.setLineDash(isFinish ? [15, 10] : [5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(50, markY);
+    ctx.lineTo(canvas.width - 50, markY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (isFinish) {
+      // TARGET ORBIT FINISH LINE BANNER
+      drawLabel("FINISH: ORBIT 500m", canvas.width - 150, markY, "#f59e0b", "#0f172a", 12);
+    } else {
+      drawLabel(`Ketinggian: ${alt}m`, 80, markY, "rgba(0,0,0,0.4)", "#ffffff", 11);
+    }
+  }
+
+  // Rocket Body
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 10;
+  ctx.translate(cx, rocketY);
+
+  // Main Hull
+  ctx.fillStyle = "#f8fafc";
+  ctx.beginPath(); 
+  ctx.ellipse(0, -20, 15, 60, 0, 0, Math.PI * 2); 
+  ctx.fill();
+  
+  // Nose cone (gradient)
+  const noseGrad = ctx.createLinearGradient(0, -80, 0, -40);
+  noseGrad.addColorStop(0, "#ef4444"); noseGrad.addColorStop(1, "#991b1b");
+  ctx.fillStyle = noseGrad;
+  ctx.beginPath();
+  ctx.moveTo(0, -85); ctx.quadraticCurveTo(15, -60, 14, -40); ctx.lineTo(-14, -40); ctx.quadraticCurveTo(-15, -60, 0, -85);
+  ctx.fill();
+  
+  // Window glass
+  ctx.fillStyle = "#38bdf8";
+  ctx.beginPath(); ctx.arc(0, -20, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 2; ctx.stroke();
+  
+  // Rocket Fins
+  ctx.fillStyle = "#475569";
+  ctx.beginPath(); ctx.moveTo(-10, 10); ctx.lineTo(-25, 40); ctx.lineTo(-10, 40); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(10, 10); ctx.lineTo(25, 40); ctx.lineTo(10, 40); ctx.fill();
+  
+  // Engine nozzle
+  ctx.fillStyle = "#334155";
+  ctx.fillRect(-8, 38, 16, 12);
   ctx.restore();
 
-  // Exhaust flame
+  // Exhaust Flame & Thrust Action Vector
   if (F > 100) {
-    const flameH = Math.min(80, netF * 0.04 + 20) * (0.8 + 0.2 * Math.sin(rocketState.flame * 0.5));
+    const flameH = Math.min(90, netF * 0.04 + 25) * (0.85 + 0.3 * Math.sin(rocketState.flame * 0.6));
     rocketState.flame++;
-    const flameGrad = ctx.createLinearGradient(cx, rocketY + 60, cx, rocketY + 60 + flameH);
+    const flameGrad = ctx.createLinearGradient(cx, rocketY + 50, cx, rocketY + 50 + flameH);
     flameGrad.addColorStop(0, "#f59e0b"); flameGrad.addColorStop(0.5, "#ef4444"); flameGrad.addColorStop(1, "rgba(239,68,68,0)");
     ctx.fillStyle = flameGrad;
-    ctx.beginPath(); ctx.ellipse(cx, rocketY + 60, 15, flameH, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx, rocketY + 50, 12, flameH, 0, 0, Math.PI * 2); ctx.fill();
 
-    // Exhaust particles
-    if (isPlaying && Math.random() < 0.5) {
-      rocketState.particles.push({ x: cx + (Math.random()-0.5)*20, y: rocketY + 70, vx: (Math.random()-0.5)*3, vy: Math.random()*6+2, life: 1 });
+    // Particle plume
+    if (isPlaying && Math.random() < 0.6) {
+      rocketState.particles.push({ x: cx + (Math.random() - 0.5) * 16, y: rocketY + 55, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 7 + 3, life: 1 });
     }
     rocketState.particles = rocketState.particles.filter(p => p.life > 0);
     rocketState.particles.forEach(p => {
       ctx.fillStyle = `rgba(251,191,36,${p.life})`;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
-      p.x += p.vx; p.y += p.vy; p.life -= 0.06;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+      p.x += p.vx; p.y += p.vy; p.life -= 0.05;
     });
   }
 
-  // Aksi-reaksi labels
+  // Action-Reaction Labels & Vectors
   if (F > 0) {
-    ctx.fillStyle = "#10b981"; ctx.font = "bold 13px Inter"; ctx.textAlign = "left";
-    ctx.fillText(`⬆ AKSI: Gas → Roket F=${F}N`, cx + 50, rocketY - 20);
-    ctx.fillStyle = "#ef4444";
-    ctx.fillText(`⬇ REAKSI: Roket → Gas ${F}N`, cx + 50, rocketY + 5);
-    if (netF > 0) { ctx.fillStyle = "#f59e0b"; ctx.fillText(`🚀 a = (F−W)/m = ${a.toFixed(2)} m/s²`, cx + 50, rocketY + 28); }
-    else { ctx.fillStyle = "#ef4444"; ctx.fillText(`❌ F < W, roket belum bisa terbang!`, cx + 50, rocketY + 28); }
+    drawLabel(`AKSI: Gas → Roket F=${F}N`, cx + 110, rocketY - 25, "rgba(16,185,129,0.9)", "#ffffff", 11);
+    drawLabel(`REAKSI: Roket → Gas ${F}N`, cx + 110, rocketY + 5, "rgba(239,68,68,0.9)", "#ffffff", 11);
+    if (netF > 0) { 
+      drawLabel(`a = (F−W)/m = ${a.toFixed(2)} m/s²`, cx + 120, rocketY + 35, "rgba(245,158,11,0.9)", "#ffffff", 11); 
+    } else { 
+      drawLabel(`F < W, roket belum terbang!`, cx + 115, rocketY + 35, "rgba(239,68,68,0.9)", "#ffffff", 11); 
+    }
   }
 
-  // W arrow down
-  drawArrow(cx, rocketY - 40, 0, W * 0.06 + 20, "#ef4444", `W=${W}N`);
-  // F arrow up
-  if (F > 0) drawArrow(cx, rocketY - 40, 0, -(F * 0.04 + 20), "#10b981", `F=${F}N`);
+  // Force W arrow down
+  drawArrow(cx, rocketY - 20, 0, W * 0.06 + 20, "#ef4444", `W=${W}N`);
+  // Force F arrow up
+  if (F > 0) drawArrow(cx, rocketY - 20, 0, -(F * 0.04 + 20), "#10b981", `F=${F}N`);
+
+  ctx.restore();
 
   velValue.textContent = rocketState.v.toFixed(2);
   accelValue.textContent = Math.max(0, a).toFixed(2);
@@ -352,76 +589,138 @@ function drawRocketScene() {
   if (F <= W) {
     statusMessage.textContent = `Roket Diam — F (${F}N) ≤ W (${W}N), butuh lebih dari 980 N!`;
     statusMessage.style.borderColor = "#ef4444";
-    conclusionText.textContent = `Roket diam karena gaya dorong F = ${F} N ≤ berat W = m·g = 100×9.8 = 980 N. Gaya gas (reaksi) belum cukup kuat melawan gravitasi.`;
+    conclusionText.textContent = `Roket diam karena gaya dorong F = ${F} N ≤ berat W = m·g = 100×9.8 = 980 N. Gaya reaksi gas belum cukup kuat meluncurkan roket.`;
+  } else if (rocketState.reachedTarget) {
+    statusMessage.textContent = `🚀 Simulasi Selesai (Mencapai Orbit 500m)`;
+    statusMessage.style.borderColor = "#10b981";
   } else {
-    statusMessage.textContent = `🚀 Roket Meluncur! — a = ${a.toFixed(2)} m/s², v = ${rocketState.v.toFixed(1)} m/s`;
+    statusMessage.textContent = `🚀 Roket Meluncur! — Ketinggian: ${rocketState.y.toFixed(0)}m / 500m (a = ${a.toFixed(2)} m/s²)`;
     statusMessage.style.borderColor = "#10b981";
     conclusionText.textContent = `Hukum III Newton: Roket mendorong gas ke bawah (aksi) → gas mendorong roket ke atas (reaksi) dengan F = ${F} N. ΣF = F − W = ${netF.toFixed(0)} N. a = ${a.toFixed(2)} m/s².`;
   }
 }
 
-// ===== BRAKING DRAW =====
+// ===== BRAKING DRAW (PHYSICS INERTIA OVERHAUL & DYNAMIC CAMERA) =====
 function drawBrakingScene() {
   const v0 = Math.max(1, parseFloat(carSpeed.value) || 20);
   const m = Math.max(500, parseFloat(brakingMass.value) || 1500);
   const Fbrak = Math.max(1000, parseFloat(brakingForce.value) || 8000);
   const deccel = -Fbrak / m;
 
+  const PX_PER_M = 28; // scale: 1 metre = 28 pixels
   const groundY = canvas.height * 0.72;
   const baseX = 80;
-  const carX = baseX + brakingState.xCar;
-  const boxX = baseX + brakingState.xBox;
+  const carX = baseX + brakingState.xCar * PX_PER_M;
+  const boxX = baseX + brakingState.xBox * PX_PER_M;
+  const currentBoxDropY = brakingState.yBox * PX_PER_M; // how far it's fallen in px
+
+  // Dynamic Camera tracking average position of Car and Box
+  const centerPos = (carX + boxX) / 2;
+  const targetCamX = Math.max(0, centerPos - canvas.width * 0.4);
+  camX += (targetCamX - camX) * 0.1;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Road
-  const roadGrad = ctx.createLinearGradient(0, groundY - 30, 0, groundY + 15);
+  ctx.save();
+  ctx.translate(-camX, 0);
+
+  // Sky background
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, groundY);
+  skyGrad.addColorStop(0, "#f1f5f9"); skyGrad.addColorStop(1, "#cbd5e1");
+  ctx.fillStyle = skyGrad; ctx.fillRect(camX - 50, 0, canvas.width + 100, groundY);
+
+  // Asphalt Road
+  const roadGrad = ctx.createLinearGradient(0, groundY - 30, 0, groundY + 25);
   roadGrad.addColorStop(0, "#374151"); roadGrad.addColorStop(1, "#1f2937");
-  ctx.fillStyle = roadGrad; ctx.fillRect(0, groundY - 30, canvas.width, 45);
-  ctx.strokeStyle = "#f59e0b44"; ctx.lineWidth = 3; ctx.setLineDash([25, 20]);
-  ctx.beginPath(); ctx.moveTo(0, groundY - 10); ctx.lineTo(canvas.width, groundY - 10); ctx.stroke();
+  ctx.fillStyle = roadGrad; ctx.fillRect(camX - 50, groundY - 30, canvas.width + 100, 55);
+
+  // Dashed lane lines
+  ctx.strokeStyle = "#f59e0b66"; ctx.lineWidth = 3; ctx.setLineDash([25, 20]);
+  ctx.beginPath(); ctx.moveTo(camX - 50, groundY - 10); ctx.lineTo(camX + canvas.width + 50, groundY - 10); ctx.stroke();
   ctx.setLineDash([]);
 
-  // Tire skid marks
+  // Tire skid marks during braking
   if (brakingState.braking && brakingState.vCar > 0.5) {
-    ctx.strokeStyle = "#1f2937"; ctx.lineWidth = 6;
-    ctx.beginPath(); ctx.moveTo(baseX + 25, groundY - 5); ctx.lineTo(carX + 25, groundY - 5); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(baseX + 70, groundY - 5); ctx.lineTo(carX + 70, groundY - 5); ctx.stroke();
+    ctx.strokeStyle = "#111827"; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.moveTo(baseX + 25, groundY - 6); ctx.lineTo(carX + 25, groundY - 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(baseX + 90, groundY - 6); ctx.lineTo(carX + 90, groundY - 6); ctx.stroke();
   }
 
-  // Car body
-  const cW = 120, cH = 40;
+  // --- CAR BODY (PICKUP TRUCK) ---
+  const cW = 120, cH = 30;
   ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 10;
-  ctx.fillStyle = "#1d4ed8";
-  ctx.beginPath(); ctx.roundRect(carX, groundY - cH - 18, cW, cH, 8); ctx.fill();
+  
+  // Flatbed (back part)
+  ctx.fillStyle = "#1e3a8a"; // Darker blue
+  ctx.beginPath(); ctx.roundRect(carX, groundY - cH - 18, 70, cH, 4); ctx.fill();
+  
+  // Cabin (front part)
+  ctx.fillStyle = "#1d4ed8"; // Blue
+  ctx.beginPath(); ctx.roundRect(carX + 65, groundY - cH - 40, 55, cH + 22, 10); ctx.fill();
+
+  // Window
   ctx.fillStyle = "#bfdbfe";
-  ctx.beginPath(); ctx.moveTo(carX + 28, groundY - cH - 18); ctx.lineTo(carX + 50, groundY - cH - 36); ctx.lineTo(carX + 90, groundY - cH - 36); ctx.lineTo(carX + 105, groundY - cH - 18); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(carX + 75, groundY - cH - 35, 30, 20, 4); ctx.fill();
   ctx.restore();
-  drawWheel(carX + 25, groundY - 14, 15, brakingState.vCar * elapsedTime * 2, "#111827");
-  drawWheel(carX + 90, groundY - 14, 15, brakingState.vCar * elapsedTime * 2, "#111827");
 
-  // Box on roof
-  const bxW = 40, bxH = 30;
-  ctx.fillStyle = "#fef3c7"; ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(boxX + 40, groundY - cH - 18 - bxH, bxW, bxH, 4); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#92400e"; ctx.font = "bold 11px Inter"; ctx.textAlign = "center";
-  ctx.fillText("📦", boxX + 60, groundY - cH - 18 - bxH/2 + 5);
+  // Driver Mannequin (Inertia effect: tilts forward when braking)
+  const driverX = carX + 85;
+  const driverY = groundY - cH - 25;
+  const tilt = brakingState.braking && brakingState.vCar > 0.1 ? 0.35 : 0; // forward tilt angle
+  ctx.save();
+  ctx.translate(driverX, driverY);
+  ctx.rotate(tilt);
+  ctx.fillStyle = "#f59e0b"; ctx.beginPath(); ctx.arc(0, -10, 5, 0, Math.PI * 2); ctx.fill(); // Head
+  ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(0, 8); ctx.stroke(); // Torso
+  ctx.restore();
 
-  // Brake lights
+  // Wheels
+  const rot = brakingState.vCar * elapsedTime * 2;
+  drawWheel(carX + 25, groundY - 14, 15, rot, "#111827");
+  drawWheel(carX + 90, groundY - 14, 15, rot, "#111827");
+
+  // Brake Tail Lights
   if (brakingState.braking) {
-    ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(carX + 8, groundY - cH - 18 + cH/2, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(carX + cW - 8, groundY - cH - 18 + cH/2, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ef4444"; ctx.shadowColor = "#ef4444"; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(carX + 5, groundY - cH - 6, 6, 0, Math.PI * 2); ctx.fill();
   }
 
-  // Braking force arrow
+  // --- BOX ON FLATBED / SLIDING ON ROAD (HUKUM I NEWTON INERSIA) ---
+  const bxW = 40, bxH = 30;
+  // Normal position: on top of flatbed; drop = currentBoxDropY pixels from initial resting pos
+  const flatbedY = groundY - cH - 18 - bxH; // Y when box sits on flatbed
+  const currentBoxY = flatbedY + currentBoxDropY;
+  const rotAngle = brakingState.boxFallen && currentBoxDropY > 5 ? (currentBoxDropY / 60) * Math.PI * 1.5 : 0;
+
+  ctx.save();
+  ctx.translate(boxX + 15 + bxW/2, currentBoxY + bxH/2);
+  ctx.rotate(rotAngle);
+  ctx.fillStyle = "#fef3c7"; ctx.strokeStyle = "#d97706"; ctx.lineWidth = 2;
+  ctx.shadowColor = "rgba(0,0,0,0.15)"; ctx.shadowBlur = 6;
+  ctx.beginPath(); ctx.roundRect(-bxW/2, -bxH/2, bxW, bxH, 5); ctx.fill(); ctx.stroke();
+  // Draw crate cross pattern
+  ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-bxW/2, -bxH/2); ctx.lineTo(bxW/2, bxH/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bxW/2, -bxH/2); ctx.lineTo(-bxW/2, bxH/2); ctx.stroke();
+  ctx.restore();
+
+  // Forces & Inertia Arrow Indicator
   if (brakingState.braking && brakingState.vCar > 0) {
-    drawArrow(carX + cW/2, groundY - cH/2 - 18, -Math.min(80, Fbrak * 0.005 + 20), 0, "#ef4444", `F_rem=${Fbrak}N`);
+    // F_rem on car (pointing left)
+    drawArrow(carX + cW / 2, groundY - cH / 2 - 18, -Math.min(80, Fbrak * 0.005 + 20), 0, "#ef4444", `F_rem=${Fbrak}N`);
+  }
+
+  if (brakingState.vBox > 0.1 && (brakingState.vBox > brakingState.vCar + 0.5)) {
+    // Arrow showing Box Inertia (v_inersia continuing forward)
+    drawArrow(boxX + 35, currentBoxY - 12, Math.min(60, brakingState.vBox * 2 + 15), 0, "#f59e0b", `INERSIA v=${brakingState.vBox.toFixed(1)}m/s`);
   }
 
   // Labels
-  ctx.fillStyle = "#1e293b"; ctx.font = "bold 12px Inter"; ctx.textAlign = "center";
-  ctx.fillText(`Mobil: ${brakingState.vCar.toFixed(1)} m/s`, carX + cW/2, groundY + 20);
-  ctx.fillStyle = "#92400e"; ctx.fillText(`Kotak: ${brakingState.vBox.toFixed(1)} m/s`, boxX + 60, groundY + 36);
+  drawLabel(`Mobil: ${brakingState.vCar.toFixed(1)} m/s`, carX + cW / 2, groundY + 22, "#1e3a8a", "#ffffff", 12);
+  drawLabel(`Kotak: ${brakingState.vBox.toFixed(1)} m/s`, boxX + 35, groundY + 44, "#d97706", "#ffffff", 12);
+
+  ctx.restore();
 
   velValue.textContent = `${brakingState.vCar.toFixed(1)} / ${brakingState.vBox.toFixed(1)}`;
   accelValue.textContent = brakingState.braking ? deccel.toFixed(2) : "0.00";
@@ -429,15 +728,15 @@ function drawBrakingScene() {
   timeValue.textContent = elapsedTime.toFixed(2);
 
   if (!brakingState.braking) {
-    statusMessage.textContent = `Mobil Melaju ${v0} m/s, Kotak Ikut → Tekan REM MENDADAK!`;
+    statusMessage.textContent = `Mobil Melaju ${v0} m/s, Kotak Ikut di Atas → Tekan REM MENDADAK!`;
     statusMessage.style.borderColor = "#f59e0b";
-    conclusionText.textContent = `Mobil dan kotak bergerak bersama dengan kecepatan awal ${v0} m/s. Kotak tidak terikat ke mobil. Tekan REM MENDADAK untuk melihat efek inersia (Hukum I Newton).`;
+    conclusionText.textContent = `Mobil dan kotak bergerak bersama dengan kecepatan v0 = ${v0} m/s. Kotak tidak terikat ke atap mobil. Tekan REM MENDADAK untuk mengamati Hukum I Newton (Inersia)!`;
   } else if (brakingState.vCar > 0.1) {
-    statusMessage.textContent = `Rem! Mobil melambat tapi Kotak Terus Meluncur (Inersia)!`;
+    statusMessage.textContent = `REM! Mobil melambat (a=${deccel.toFixed(2)}m/s²), Kotak terus meluncur ke depan (Inersia)!`;
     statusMessage.style.borderColor = "#ef4444";
-    conclusionText.textContent = `Mobil direm: a_mobil = -F_rem/m = ${deccel.toFixed(2)} m/s². Kotak tidak terikat → kotak terus dengan kecepatan semula (Hukum I Newton: benda mempertahankan gerak). Kotak meluncur ke depan!`;
+    conclusionText.textContent = `Mobil direm: a_mobil = -F_rem/m = ${deccel.toFixed(2)} m/s². Menurut Hukum I Newton, kotak tidak mendapat gaya pengereman langsung, sehingga mempertahankan kecepatannya dan terlempar ke depan!`;
   } else {
-    statusMessage.textContent = `Mobil Berhenti. Kotak Terus Meluncur Ke Depan!`;
+    statusMessage.textContent = `Mobil Berhenti! Kotak Terus Meluncur dan Jatuh ke Jalan (Inersia)!`;
     statusMessage.style.borderColor = "#ef4444";
   }
 }
@@ -461,27 +760,89 @@ function updatePhysics(dt) {
     const F = Math.max(1, parseFloat(raceForce.value) || 10000);
     const mC = Math.max(500, parseFloat(carMass.value) || 1000);
     const mT = Math.max(1000, parseFloat(truckMass.value) || 8000);
-    raceState.vCar += (F / mC) * scaledDt;
-    raceState.vTruck += (F / mT) * scaledDt;
-    raceState.xCar += raceState.vCar * scaledDt * 30;
-    raceState.xTruck += raceState.vTruck * scaledDt * 30;
-    if (raceState.xCar > canvas.width * 0.8) { raceState.xCar = canvas.width * 0.8; isPlaying = false; btnPlayPause.textContent = "Mulai Simulasi"; }
+    const aCar = F / mC;
+    const aTruck = F / mT;
+    raceState.vCar += aCar * scaledDt;
+    raceState.vTruck += aTruck * scaledDt;
+    // x in metres, scale to pixels: finishDistance=1000m, canvas scaled so 1 pixel = 1m of xCar
+    raceState.xCar += raceState.vCar * scaledDt;
+    raceState.xTruck += raceState.vTruck * scaledDt;
+
+    // Check winner at finish line 1000m
+    if ((raceState.xCar >= 1000 || raceState.xTruck >= 1000) && !raceState.winner) {
+      raceState.winner = raceState.xCar >= raceState.xTruck ? "Mobil Sport" : "Truk Beban";
+      raceState.finishTime = elapsedTime;
+    }
+    if (raceState.xCar >= 1200 && raceState.xTruck >= 1200) {
+      isPlaying = false;
+      btnPlayPause.textContent = "Mulai Simulasi";
+    }
     pushChart(elapsedTime, raceState.vCar, raceState.vTruck);
   } else if (currentScenario === "rocket") {
     const F = Math.max(0, parseFloat(rocketThrust.value) || 2000);
     const m = 100, g = 9.8;
-    const a = Math.max(0, (F - m * g) / m);
-    rocketState.v += a * scaledDt;
-    rocketState.y += rocketState.v * scaledDt * 25;
-    if (rocketState.y > canvas.height * 0.85) { isPlaying = false; btnPlayPause.textContent = "Mulai Simulasi"; }
-    pushChart(elapsedTime, rocketState.v, a);
+    const netF = F - m * g;
+    const a = netF / m; // Can be negative (thrust < weight = rocket stays)
+    if (F > m * g) {
+      // Only accelerate upward when thrust exceeds weight
+      rocketState.v += a * scaledDt;
+      if (rocketState.v < 0) rocketState.v = 0;
+    } else {
+      // Thrust insufficient: decelerate and stop
+      rocketState.v = Math.max(0, rocketState.v - 9.8 * scaledDt);
+    }
+    // y in metres (real physics scale)
+    rocketState.y += rocketState.v * scaledDt;
+
+    // Check target orbit reached (500m)
+    if (rocketState.y >= 500 && !rocketState.reachedTarget) {
+      rocketState.reachedTarget = true;
+    }
+    if (rocketState.y > 600) {
+      isPlaying = false;
+      btnPlayPause.textContent = "Mulai Simulasi";
+    }
+    pushChart(elapsedTime, rocketState.v, Math.max(0, a));
   } else if (currentScenario === "braking") {
-    if (brakingState.braking) {
+    const v0 = Math.max(1, parseFloat(carSpeed.value) || 20);
+    const g = 9.8;
+
+    if (!brakingState.braking) {
+      // Cruising together at v0 — move both at same speed
+      brakingState.vCar = v0;
+      brakingState.vBox = v0;
+      brakingState.xCar += brakingState.vCar * scaledDt;
+      brakingState.xBox += brakingState.vBox * scaledDt;
+    } else {
       const m = Math.max(500, parseFloat(brakingMass.value) || 1500);
       const Fbrak = Math.max(1000, parseFloat(brakingForce.value) || 8000);
-      brakingState.vCar = Math.max(0, brakingState.vCar - (Fbrak / m) * scaledDt);
-      brakingState.xCar += brakingState.vCar * scaledDt * 25;
-      brakingState.xBox += brakingState.vBox * scaledDt * 25; // box continues at original speed
+      const deccel = Fbrak / m; // car deceleration m/s²
+
+      // Car brakes: decelerates due to braking force
+      brakingState.vCar = Math.max(0, brakingState.vCar - deccel * scaledDt);
+      brakingState.xCar += brakingState.vCar * scaledDt;
+
+      // Box: inertia keeps it going — no braking force on box!
+      // Once box slides off front of car, road friction acts
+      const carFrontX = brakingState.xCar + 0.7; // 0.7m = front of car flatbed
+      const boxRelX = brakingState.xBox - brakingState.xCar;
+
+      if (boxRelX > 1.5) {
+        // Box has left the car — apply gravity drop + road sliding friction
+        brakingState.boxFallen = true;
+        brakingState.yBox = Math.min(1.2, brakingState.yBox + g * scaledDt * 0.25);
+        const roadFrictionDecel = 3.5; // μ*g roughly for crate on asphalt
+        brakingState.vBox = Math.max(0, brakingState.vBox - roadFrictionDecel * scaledDt);
+      }
+      // Box position: keep moving until velocity reaches 0
+      brakingState.xBox += brakingState.vBox * scaledDt;
+
+      if (brakingState.vCar <= 0 && brakingState.vBox <= 0) {
+        brakingState.vCar = 0;
+        brakingState.vBox = 0;
+        isPlaying = false;
+        btnPlayPause.textContent = "Mulai Simulasi";
+      }
     }
     pushChart(elapsedTime, brakingState.vCar, brakingState.vBox);
   }
@@ -510,10 +871,14 @@ function simulationLoop(ts) {
 // ===== RESET =====
 function resetSim(rebuildChart = true) {
   isPlaying = false; elapsedTime = 0; lastTime = 0;
+  camX = 0; camY = 0;
   trolleyState.x = 0; trolleyState.v = 0;
-  raceState.xCar = 0; raceState.xTruck = 0; raceState.vCar = 0; raceState.vTruck = 0;
-  rocketState.y = 0; rocketState.v = 0; rocketState.particles = []; rocketState.flame = 0;
-  brakingState.xCar = 0; brakingState.xBox = 0; brakingState.vCar = parseFloat(carSpeed.value) || 20; brakingState.vBox = brakingState.vCar; brakingState.braking = false;
+  raceState.xCar = 0; raceState.xTruck = 0; raceState.vCar = 0; raceState.vTruck = 0; raceState.winner = null; raceState.finishTime = 0;
+  rocketState.y = 0; rocketState.v = 0; rocketState.particles = []; rocketState.flame = 0; rocketState.reachedTarget = false;
+  brakingState.xCar = 0; brakingState.xBox = 0; brakingState.yBox = 0;
+  brakingState.vCar = parseFloat(carSpeed.value) || 20; brakingState.vBox = brakingState.vCar;
+  brakingState.braking = false; brakingState.boxFallen = false;
+
   btnPlayPause.textContent = "Mulai Simulasi";
   if (rebuildChart && chart) { chart.data.labels = []; chart.data.datasets.forEach(d => d.data = []); chart.update("none"); }
   drawScene();
@@ -547,17 +912,33 @@ function switchScenario() {
 btnPlayPause.addEventListener("click", () => {
   isPlaying = !isPlaying;
   btnPlayPause.textContent = isPlaying ? "Jeda Simulasi" : "Lanjutkan";
-  if (currentScenario === "braking" && !brakingState.braking && !isPlaying) isPlaying = true; // keep running during braking setup
 });
 btnReset.addEventListener("click", () => resetSim(true));
 scenarioSelect.addEventListener("change", switchScenario);
 
+btnViewSim?.addEventListener("click", () => {
+  btnViewSim.classList.add("active");
+  btnViewChart.classList.remove("active");
+  simulationContainer.classList.remove("hidden");
+  overlayStats.classList.remove("hidden");
+  chartPanel.classList.remove("active");
+  resizeCanvas();
+  drawScene();
+});
+btnViewChart?.addEventListener("click", () => {
+  btnViewChart.classList.add("active");
+  btnViewSim.classList.remove("active");
+  simulationContainer.classList.add("hidden");
+  overlayStats.classList.add("hidden");
+  chartPanel.classList.add("active");
+});
+
 btnBrake?.addEventListener("click", () => {
-  brakingState.vCar = parseFloat(carSpeed.value) || 20;
-  brakingState.vBox = brakingState.vCar;
-  brakingState.braking = true;
-  isPlaying = true;
-  btnPlayPause.textContent = "Jeda Simulasi";
+  if (!brakingState.braking) {
+    brakingState.braking = true;
+    isPlaying = true;
+    btnPlayPause.textContent = "Jeda Simulasi";
+  }
 });
 
 [btnSpeed1, btnSpeed05, btnSpeed025].forEach(btn => {

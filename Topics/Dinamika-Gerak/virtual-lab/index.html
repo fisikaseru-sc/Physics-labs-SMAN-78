@@ -20,6 +20,7 @@
         justify-content: flex-end;
         padding: 10px 20px;
       }
+
       .btn-guru {
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -188,13 +189,13 @@
 
       // Initialize access from localStorage
       let accessData = JSON.parse(
-        localStorage.getItem("dinamika_gerak_access"),
+        localStorage.getItem("dinamika_gerak_access")
       );
       if (!accessData) {
         accessData = ["p1", "p2"]; // Default open
         localStorage.setItem(
           "dinamika_gerak_access",
-          JSON.stringify(accessData),
+          JSON.stringify(accessData)
         );
       }
 
@@ -204,7 +205,7 @@
       // Fetch latest access from server
       function syncAccessFromServer() {
         fetch(
-          "https://api.restful-api.dev/objects/ff8081819d82fab6019f6b8365466fee",
+          "https://api.restful-api.dev/objects/ff8081819d82fab6019f6b8365466fee"
         )
           .then((res) => res.json())
           .then((json) => {
@@ -212,7 +213,7 @@
               accessData = json.data.access;
               localStorage.setItem(
                 "dinamika_gerak_access",
-                JSON.stringify(accessData),
+                JSON.stringify(accessData)
               );
               renderCards();
             }
@@ -231,7 +232,7 @@
         }
         localStorage.setItem(
           "dinamika_gerak_access",
-          JSON.stringify(accessData),
+          JSON.stringify(accessData)
         );
         renderCards();
 
@@ -241,13 +242,13 @@
           {
             method: "PUT",
             headers: {
-              "Content-Type": "application/json",
+              "Content-Type": "application/json"
             },
             body: JSON.stringify({
               name: "sman78_physics_access",
-              data: { access: accessData },
-            }),
-          },
+              data: { access: accessData }
+            })
+          }
         ).catch((err) => console.error("Error updating access data:", err));
       }
 
@@ -281,23 +282,23 @@
           let guruControlsHTML = "";
           if (isGuruMode) {
             guruControlsHTML = `
-                        <div class="guru-controls">
-                            <label>Akses Siswa</label>
-                            <label class="switch">
-                                <input type="checkbox" ${isUnlocked ? "checked" : ""} onchange="toggleAccess('${mod.id}')">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    `;
+              <div class="guru-controls">
+                <label>Akses Siswa</label>
+                <label class="switch">
+                  <input type="checkbox" ${isUnlocked ? "checked" : ""} onchange="toggleAccess('${mod.id}')">
+                  <span class="slider"></span>
+                </label>
+              </div>
+            `;
           }
 
           card.innerHTML = `
-                    <div class="card-icon">${mod.icon}</div>
-                    <h2 class="card-title">${mod.title}</h2>
-                    <p class="card-desc">${mod.desc}</p>
-                    ${badgeHTML}
-                    ${guruControlsHTML}
-                `;
+            <div class="card-icon">${mod.icon}</div>
+            <h2 class="card-title">${mod.title}</h2>
+            <p class="card-desc">${mod.desc}</p>
+            ${badgeHTML}
+            ${guruControlsHTML}
+          `;
 
           container.appendChild(card);
         });

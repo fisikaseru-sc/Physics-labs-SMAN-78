@@ -281,7 +281,7 @@ function drawFrictionScenario(dt = 0) {
   ctx.fillStyle = frictionObj.state === "static" ? "#f59e0b" : "#3b82f6";
   ctx.beginPath(); ctx.roundRect(10, 10, 160, 30, 8); ctx.fill();
   ctx.fillStyle = "#fff"; ctx.font = "bold 12px Inter,sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(frictionObj.state === "static" ? "🔴 GESEK STATIS" : "🟢 GESEK KINETIS", 90, 30);
+  ctx.fillText(frictionObj.state === "static" ? "GESEK STATIS" : "GESEK KINETIS", 90, 30);
 
   if (frictionObj.state === "static") {
     statusMessage.textContent = `Benda Diam — F (${F.toFixed(0)} N) ≤ fs,max (${fsMax.toFixed(0)} N)`;
@@ -386,9 +386,9 @@ function drawTensionScenario(dt = 0) {
     // W arrow
     drawArrow(cx, liftY + 50, 0, W1 * 0.08 + 30, "#ef4444", `W=${W1.toFixed(0)}N`);
     // accel direction
-    if (a > 0) { ctx.fillStyle = "#10b981"; ctx.font = "bold 14px Inter"; ctx.textAlign = "center"; ctx.fillText("▲ Dipercepat Naik", cx, liftY - 110); }
-    else if (a < -9.7) { ctx.fillStyle = "#ef4444"; ctx.font = "bold 14px Inter"; ctx.fillText("⚠️ JATUH BEBAS (T = 0)", cx, liftY - 110); }
-    else { ctx.fillStyle = "#ef4444"; ctx.font = "bold 14px Inter"; ctx.fillText("▼ Dipercepat Turun", cx, liftY - 110); }
+    if (a > 0) { ctx.fillStyle = "#10b981"; ctx.font = "bold 14px Inter"; ctx.textAlign = "center"; ctx.fillText("Dipercepat Naik", cx, liftY - 110); }
+    else if (a < -9.7) { ctx.fillStyle = "#ef4444"; ctx.font = "bold 14px Inter"; ctx.fillText("JATUH BEBAS (T = 0)", cx, liftY - 110); }
+    else { ctx.fillStyle = "#ef4444"; ctx.font = "bold 14px Inter"; ctx.fillText("Dipercepat Turun", cx, liftY - 110); }
 
     statusMessage.textContent = `T = m(g${a >= 0 ? "+" : ""}${a.toFixed(1)}) = ${T.toFixed(1)} N`;
     statusMessage.style.borderColor = T > W1 ? "#10b981" : (T < 0 ? "#ef4444" : "#f59e0b");
@@ -537,6 +537,28 @@ function resetSim(resetChart = true) {
 btnPlayPause.addEventListener("click", () => {
   isPlaying = !isPlaying;
   btnPlayPause.textContent = isPlaying ? "Jeda Simulasi" : "Lanjutkan";
+});
+
+const btnViewSim = document.getElementById("btnViewSim");
+const btnViewChart = document.getElementById("btnViewChart");
+const simulationContainer = document.querySelector(".simulation-container");
+const chartPanel = document.querySelector(".chart-panel");
+const overlayStats = document.getElementById("overlayStats");
+
+btnViewSim?.addEventListener("click", () => {
+  btnViewSim.classList.add("active");
+  btnViewChart.classList.remove("active");
+  simulationContainer.classList.remove("hidden");
+  overlayStats.classList.remove("hidden");
+  chartPanel.classList.remove("active");
+  drawScene(0);
+});
+btnViewChart?.addEventListener("click", () => {
+  btnViewChart.classList.add("active");
+  btnViewSim.classList.remove("active");
+  simulationContainer.classList.add("hidden");
+  overlayStats.classList.add("hidden");
+  chartPanel.classList.add("active");
 });
 btnReset.addEventListener("click", () => resetSim(true));
 scenarioSelect.addEventListener("change", switchScenario);

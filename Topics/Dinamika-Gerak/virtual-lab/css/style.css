@@ -156,6 +156,18 @@ main {
   border-radius: 16px;
 }
 
+/* GLOBAL CHART PANEL & UI TOGGLE */
+.chart-panel { background: var(--panel-bg); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--panel-border); border-radius: 12px; padding: 14px 18px; display: none; flex: 1; flex-direction: column; }
+.chart-panel.active { display: flex; }
+.chart-panel h3 { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 8px; }
+.chart-wrapper { position: relative; flex: 1; min-height: 300px; }
+
+.view-toggle { display: flex; background: rgba(255,255,255,0.5); border-radius: 8px; padding: 4px; width: max-content; border: 1px solid var(--panel-border); backdrop-filter: blur(4px); }
+.view-btn { padding: 6px 16px; border-radius: 6px; border: none; background: transparent; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: var(--text-secondary); transition: 0.2s; }
+.view-btn.active { background: var(--accent-blue); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.simulation-container.hidden { display: none !important; }
+.overlay-stats.hidden { display: none !important; }
+
 .overlay-stats {
   display: flex;
   gap: 15px;

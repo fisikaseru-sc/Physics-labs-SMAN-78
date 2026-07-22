@@ -10,22 +10,7 @@
     <link rel="stylesheet" href="../../css/style.css" />
     <style>
       /* Chart panel (same pattern as P2-7) */
-      .chart-panel {
-        background: var(--panel-bg);
-        backdrop-filter: blur(var(--glass-blur));
-        border: 1px solid var(--panel-border);
-        border-radius: 12px;
-        padding: 14px 18px;
-        margin-top: 10px;
-      }
-      .chart-panel h3 {
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--text-secondary);
-        margin-bottom: 8px;
-      }
+      /* CSS from global style.css is used for chart-panel and view-toggle */
       .chart-wrapper { position: relative; height: 130px; }
 
       /* Space / no-friction badge */
@@ -80,12 +65,16 @@
           </div>
         </div>
         <div class="nav-tabs">
-          <a href="../../index.html" class="tab-btn" style="text-decoration:none">
-            <span>🏠</span><strong>Beranda</strong>
-          </a>
+          <div class="view-toggle" style="margin-bottom:0;">
+            <button class="view-btn active" id="btnViewSim">🎮 Simulasi</button>
+            <button class="view-btn" id="btnViewChart">📈 Grafik Hasil</button>
+          </div>
           <div class="tab-btn active" id="tabP1">
             <span>1️⃣</span><strong>Hukum I Newton</strong>
           </div>
+          <a href="../../index.html" class="tab-btn" style="text-decoration: none">
+            <span>🏠</span><strong>Beranda</strong>
+          </a>
         </div>
       </header>
 
@@ -93,7 +82,7 @@
         <!-- SIMULATION AREA -->
         <div class="simulation-area">
           <!-- Stats overlay (4 boxes: v, ΣF, a, t) -->
-          <div class="overlay-stats">
+          <div class="overlay-stats" id="overlayStats">
             <div class="stat-box">
               <span class="label">Kecepatan (v)</span>
               <div><span class="value" id="velValue">0.00</span><span class="unit">m/s</span></div>

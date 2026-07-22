@@ -9,22 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../../css/style.css" />
     <style>
-      .chart-panel {
-        background: var(--panel-bg);
-        backdrop-filter: blur(var(--glass-blur));
-        border: 1px solid var(--panel-border);
-        border-radius: 12px;
-        padding: 14px 18px;
-        margin-top: 10px;
-      }
-      .chart-panel h3 {
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--text-secondary);
-        margin-bottom: 8px;
-      }
+      /* CSS from global style.css is used for chart-panel and view-toggle */
       .chart-wrapper { position: relative; height: 140px; }
       .surface-btn {
         padding: 6px 12px;
@@ -85,14 +70,18 @@
           </div>
         </div>
         <div class="nav-tabs">
-          <a href="../../index.html" class="tab-btn" style="text-decoration:none"><span>🏠</span><strong>Beranda</strong></a>
+          <div class="view-toggle" style="margin-bottom:0;">
+            <button class="view-btn active" id="btnViewSim">🎮 Simulasi</button>
+            <button class="view-btn" id="btnViewChart">📈 Grafik Hasil</button>
+          </div>
           <div class="tab-btn active"><span>3️⃣</span><strong>Jenis-Jenis Gaya</strong></div>
+          <a href="../../index.html" class="tab-btn" style="text-decoration:none"><span>🏠</span><strong>Beranda</strong></a>
         </div>
       </header>
 
       <main>
         <div class="simulation-area">
-          <div class="overlay-stats">
+          <div class="overlay-stats" id="overlayStats">
             <div class="stat-box">
               <span class="label" id="stat1Label">Gaya Berat (W)</span>
               <div><span class="value" id="stat1Value">490.0</span><span class="unit" id="stat1Unit">N</span></div>
