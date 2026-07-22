@@ -501,12 +501,30 @@ function drawRocketScene() {
     ctx.setLineDash([]);
 
     if (isFinish) {
-      // TARGET ORBIT FINISH LINE BANNER
-      drawLabel("FINISH: ORBIT 500m", canvas.width - 150, markY, "#f59e0b", "#0f172a", 12);
+      // TARGET MOON FINISH LINE BANNER
+      drawLabel("FINISH: Mendarat di Bulan (500m)", canvas.width - 150, markY, "#f59e0b", "#0f172a", 12);
     } else {
       drawLabel(`Ketinggian: ${alt}m`, 80, markY, "rgba(0,0,0,0.4)", "#ffffff", 11);
     }
   }
+
+  // Draw Moon at Finish Line (500m)
+  const moonY = launchPadY - 80 - targetAltitude;
+  ctx.save();
+  ctx.fillStyle = "#e2e8f0"; // Moon surface
+  ctx.shadowColor = "#f8fafc";
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.arc(cx, moonY - 30, 85, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Moon Craters
+  ctx.fillStyle = "#cbd5e1";
+  ctx.beginPath(); ctx.arc(cx - 30, moonY - 45, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 25, moonY - 20, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 5, moonY - 60, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - 35, moonY - 10, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 
   // Rocket Body
   ctx.save();
@@ -591,12 +609,13 @@ function drawRocketScene() {
     statusMessage.style.borderColor = "#ef4444";
     conclusionText.textContent = `Roket diam karena gaya dorong F = ${F} N ≤ berat W = m·g = 100×9.8 = 980 N. Gaya reaksi gas belum cukup kuat meluncurkan roket.`;
   } else if (rocketState.reachedTarget) {
-    statusMessage.textContent = `🚀 Simulasi Selesai (Mencapai Orbit 500m)`;
+    statusMessage.textContent = `Mendarat di Bulan! (Target 500m Selesai)`;
     statusMessage.style.borderColor = "#10b981";
+    conclusionText.textContent = `Misi Berhasil! Roket meluncur dengan gaya aksi-reaksi F = ${F} N dan berhasil mendarat di permukaan Bulan pada ketinggian 500m!`;
   } else {
-    statusMessage.textContent = `🚀 Roket Meluncur! — Ketinggian: ${rocketState.y.toFixed(0)}m / 500m (a = ${a.toFixed(2)} m/s²)`;
+    statusMessage.textContent = `Roket Meluncur ke Bulan! — Ketinggian: ${rocketState.y.toFixed(0)}m / 500m (a = ${a.toFixed(2)} m/s²)`;
     statusMessage.style.borderColor = "#10b981";
-    conclusionText.textContent = `Hukum III Newton: Roket mendorong gas ke bawah (aksi) → gas mendorong roket ke atas (reaksi) dengan F = ${F} N. ΣF = F − W = ${netF.toFixed(0)} N. a = ${a.toFixed(2)} m/s².`;
+    conclusionText.textContent = `Hukum III Newton: Roket mendorong gas ke bawah (aksi) → gas mendorong roket ke atas (reaksi) dengan F = ${F} N. ΣF = F − W = ${netF.toFixed(0)} N. a = ${a.toFixed(2)} m/s². Roket meluncur menuju Bulan!`;
   }
 }
 
