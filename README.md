@@ -8,6 +8,8 @@ Repositori ini menaungi aplikasi web HTML5/JS murni (Vanilla) yang sangat ringan
 
 - **Arsitektur Modular:** Kode disusun dengan pemisahan yang jelas (HTML, CSS, JS) dengan sistem folder (scenes) berdasarkan topik pembelajaran.
 - **Sistem Role Tanpa Database:** Menggunakan teknologi _LocalStorage_ browser untuk menyimpan status "Terkunci/Terbuka" (Siswa vs Guru). Akses Guru dilindungi oleh PIN rahasia.
+  - **PIN Default Mode Guru:** `14072026`
+  - **Cara Kalibrasi/Ubah PIN:** Buka file `Topics/Dinamika-Gerak/virtual-lab/index.html` dan cari baris `if (pin === "14072026")`, lalu ubah angkanya sesuai keinginan Anda.
 - **Simulasi Fisika Waktu Nyata:** Menggunakan _Canvas API_ untuk merender dan menghitung fisika secara langsung (60 FPS) seperti gerak lurus berubah beraturan, sistem katrol, hingga luncuran roket.
 - **Desain Modern & Responsif:** Antarmuka bergaya _Glassmorphism_ dan mode gelap yang _eye-catching_.
 
