@@ -1019,6 +1019,18 @@ function switchScenario() {
 }
 
 // ===== EVENT LISTENERS =====
+
+const speedBtns = document.querySelectorAll(".speed-btn");
+speedBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    speedBtns.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    if (btn.id === "btnSpeed1" || btn.textContent.includes("1x") || btn.textContent.includes("1×")) simSpeed = 1.0;
+    else if (btn.id === "btnSpeed05" || btn.textContent.includes("0.5")) simSpeed = 0.5;
+    else if (btn.id === "btnSpeed025" || btn.textContent.includes("0.25")) simSpeed = 0.25;
+  });
+});
+
 btnPlayPause.addEventListener("click", () => {
   isPlaying = !isPlaying;
   btnPlayPause.textContent = isPlaying ? "Jeda Simulasi" : "Lanjutkan";
@@ -1060,8 +1072,22 @@ btnBrake?.addEventListener("click", () => {
   });
 });
 
+
+function validateInput(el) {
+  let val = parseFloat(el.value);
+  const min = parseFloat(el.min);
+  const max = parseFloat(el.max);
+  if (val < min) el.value = min;
+  if (val > max) el.value = max;
+}
+
 [trolleyMass, trolleyForce, trolleyFriction, raceForce, carMass, truckMass, rocketMass, rocketThrust, carSpeed, brakingMass, brakingForce].forEach(el => {
-  if (el) el.addEventListener("input", () => { if (!isPlaying) drawScene(); });
+  if (el) el.addEventListener("input", () => {
+    validateInput(el);
+    if (!isPlaying) drawScene();
+  });
+});
+
 });
 
 // ===== INIT =====
