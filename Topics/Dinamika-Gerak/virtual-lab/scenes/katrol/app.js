@@ -73,10 +73,6 @@ function pushChart(t, v, a) {
   chart.data.labels.push(t.toFixed(1));
   chart.data.datasets[0].data.push(parseFloat(v.toFixed(3)));
   chart.data.datasets[1].data.push(parseFloat(a.toFixed(3)));
-  if (chart.data.labels.length > MAX_CHART_PTS) {
-    chart.data.labels.shift();
-    chart.data.datasets.forEach(d => d.data.shift());
-  }
   chart.update("none");
 }
 
@@ -343,6 +339,7 @@ btnViewChart?.addEventListener("click", () => {
   simulationContainer.classList.add("hidden");
   overlayStats.classList.add("hidden");
   chartPanel.classList.add("active");
+  if (chart) chart.update();
 });
 
 

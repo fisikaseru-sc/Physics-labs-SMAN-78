@@ -376,6 +376,7 @@ btnViewChart?.addEventListener("click", () => {
   simulationContainer.classList.add("hidden");
   overlayStats.classList.add("hidden");
   chartPanel.classList.add("active");
+  if (chart) chart.update();
 });
 
 btnReset.addEventListener("click", () => {

@@ -103,10 +103,6 @@ function pushChartData(t, val1, val2) {
   chartData.labels.push(t.toFixed(1));
   chartData.datasets[0].data.push(parseFloat(val1.toFixed(2)));
   if (val2 !== undefined && chartData.datasets[1]) chartData.datasets[1].data.push(parseFloat(val2.toFixed(2)));
-  if (chartData.labels.length > MAX_CHART_POINTS) {
-    chartData.labels.shift();
-    chartData.datasets.forEach(ds => ds.data.shift());
-  }
   chart.update("none");
 }
 
@@ -559,6 +555,7 @@ btnViewChart?.addEventListener("click", () => {
   simulationContainer.classList.add("hidden");
   overlayStats.classList.add("hidden");
   chartPanel.classList.add("active");
+  if (chart) chart.update();
 });
 btnReset.addEventListener("click", () => resetSim(true));
 scenarioSelect.addEventListener("change", switchScenario);

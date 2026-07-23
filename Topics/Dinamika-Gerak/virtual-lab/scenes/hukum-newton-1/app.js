@@ -107,10 +107,6 @@ function pushChart(t, v, vGhost) {
   if (showCompare && chart.data.datasets[1]) {
     chart.data.datasets[1].data.push(parseFloat((vGhost || 0).toFixed(3)));
   }
-  if (chart.data.labels.length > MAX_CHART_PTS) {
-    chart.data.labels.shift();
-    chart.data.datasets.forEach(d => d.data.shift());
-  }
   chart.update("none");
 }
 
@@ -747,6 +743,7 @@ btnViewChart?.addEventListener("click", () => {
   simulationContainer.classList.add("hidden");
   overlayStats.classList.add("hidden");
   chartPanel.classList.add("active");
+  if (chart) chart.update();
 });
 
 btnSetVelocity?.addEventListener("click", () => {

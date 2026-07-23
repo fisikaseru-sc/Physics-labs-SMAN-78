@@ -278,6 +278,7 @@ btnViewChart?.addEventListener("click", () => {
   simulationContainer.classList.add("hidden");
   overlayStats.classList.add("hidden");
   chartPanel.classList.add("active");
+  if (chart) chart.update();
 });
 
 document.querySelectorAll(".angle-preset-btn[data-angle]").forEach(btn => {
