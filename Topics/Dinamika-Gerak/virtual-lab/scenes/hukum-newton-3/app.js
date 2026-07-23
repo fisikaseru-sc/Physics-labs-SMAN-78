@@ -215,7 +215,7 @@ function drawNormalScenario(dt = 0) {
 
   statusMessage.textContent = `Benda Diam → N = W = m·g = ${W.toFixed(1)} N`;
   statusMessage.style.borderColor = "#10b981";
-  conclusionText.textContent = `Gaya berat W = m·g = ${m}×${g.toFixed(2)} = ${W.toFixed(1)} N menarik benda ke bawah. Karena benda diam di atas lantai, lantai memberikan Gaya Normal N = ${N.toFixed(1)} N ke atas sebagai reaksi. ΣF = N − W = 0 N (kesetimbangan).`;
+  conclusionText.textContent = `Gaya berat W = m·g = ${m}×${g.toFixed(2)} = ${W.toFixed(1)} N menarik benda ke bawah. Lantai menahan benda dengan Gaya Normal N = ${N.toFixed(1)} N ke atas. (⚠️ Ingat: N dan W BUKAN pasangan Aksi-Reaksi Hukum III Newton karena bekerja pada benda yang sama!). ΣF = N − W = 0 N (Hukum I Newton).`;
 }
 
 // ===== SCENARIO: GAYA GESEK =====
@@ -272,10 +272,10 @@ function drawFrictionScenario(dt = 0) {
     pushChartData(elapsedTime, frictionObj.v, netF);
   }
 
-  stat1Label.textContent = "fs,max (Gesek Statis)"; stat1Value.textContent = fsMax.toFixed(1); stat1Unit.textContent = "N";
-  stat2Label.textContent = "fk (Gesek Kinetis)"; stat2Value.textContent = fk.toFixed(1); stat2Unit.textContent = "N";
+  stat1Label.textContent = "fs,max (Batas Statis)"; stat1Value.textContent = fsMax.toFixed(1); stat1Unit.textContent = "N";
+  stat2Label.textContent = "Gaya Gesek Aktual (f)"; stat2Value.textContent = fActual.toFixed(1); stat2Unit.textContent = "N";
   stat3Label.textContent = "Gaya Dorong (F)"; stat3Value.textContent = F.toFixed(1); stat3Unit.textContent = "N";
-  stat4Label.textContent = "ΣF / Percepatan"; stat4Value.textContent = `${netF.toFixed(1)} N / ${(netF/m).toFixed(2)}`; stat4Unit.textContent = "m/s²";
+  stat4Label.textContent = "ΣF / Percepatan"; stat4Value.textContent = `${netF.toFixed(1)} N / ${(m > 0 ? netF/m : 0).toFixed(2)}`; stat4Unit.textContent = "m/s²";
 
   const cx = canvas.width / 2, cy = canvas.height * 0.55, groundY = cy + 50;
 
@@ -319,7 +319,7 @@ function drawFrictionScenario(dt = 0) {
     const a = netF / m;
     statusMessage.textContent = `Benda Bergerak — a = ${a.toFixed(2)} m/s² (v = ${frictionObj.v.toFixed(1)} m/s)`;
     statusMessage.style.borderColor = "#3b82f6";
-    conclusionText.textContent = `F (${F.toFixed(0)} N) > fs,max (${fsMax.toFixed(0)} N) → benda meluncur. Gaya gesek kinetis fk = μk·N = ${muK.toFixed(2)}×${N.toFixed(0)} = ${fk.toFixed(1)} N. ΣF = ${netF.toFixed(1)} N → a = F/m = ${a.toFixed(2)} m/s².`;
+    conclusionText.textContent = `F (${F.toFixed(0)} N) > fs,max (${fsMax.toFixed(0)} N) → benda meluncur. Gaya gesek menjadi kinetis fk = μk·N = ${fk.toFixed(1)} N. ΣF = F - fk = ${netF.toFixed(1)} N → Percepatan a = ΣF / m = ${a.toFixed(2)} m/s².`;
   }
 }
 
@@ -413,7 +413,7 @@ function drawTensionScenario(dt = 0) {
     
     statusMessage.textContent = `a = ${accel.toFixed(2)} m/s², T = ${T.toFixed(1)} N`;
     statusMessage.style.borderColor = "#3b82f6";
-    conclusionText.textContent = `Sistem: m₁=${m}kg di meja, m₂=${m2}kg menggantung. Resultan gaya ΣF = W₂ = ${(m2*g).toFixed(0)} N menggerakkan sistem total (m₁+m₂=${m+m2}kg). Percepatan a = W₂/(m₁+m₂) = ${accel.toFixed(2)} m/s², Tegangan T = m₁·a = ${T.toFixed(1)} N.`;
+    conclusionText.textContent = `Sistem: m₁=${m}kg di meja (licin), m₂=${m2}kg menggantung. Resultan gaya ΣF = W₂ = ${(m2*g).toFixed(0)} N menggerakkan sistem total (m₁+m₂=${m+m2}kg). Percepatan a = ΣF / (m₁+m₂) = ${accel.toFixed(2)} m/s², Tegangan T = m₁·a = ${T.toFixed(1)} N.`;
   } else {
     // Elevator mode
     const a = parseFloat(tensionLiftAccel.value) || 3;
