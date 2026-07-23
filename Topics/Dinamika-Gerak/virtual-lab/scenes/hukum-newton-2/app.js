@@ -220,7 +220,7 @@ function drawRaceScene() {
   const aCar = F / mCar, aTruck = F / mTruck;
 
   const PX_PER_M = 1; // 1 px = 1 metre
-  const finishDistance = 500; // Finish line at 500m
+  const finishDistance = 1000; // Finish line at 1000m
   const startX = 60;
   const finishX = startX + finishDistance * PX_PER_M;
 
@@ -276,7 +276,7 @@ function drawRaceScene() {
   ctx.font = "bold 12px Inter";
   ctx.fillStyle = "#94a3b8";
   ctx.textAlign = "center";
-  for (let dist = 100; dist <= 500; dist += 100) {
+  for (let dist = 100; dist <= 1000; dist += 100) {
     const markX = startX + dist;
     ctx.strokeStyle = "#64748b88";
     ctx.lineWidth = 1.5;
@@ -317,7 +317,7 @@ function drawRaceScene() {
   ctx.lineWidth = 2;
   ctx.strokeRect(finishX - 10, gantryY, finW + 20, 22);
   
-  drawLabel("FINISH 500m", finishX + finW / 2, gantryY + 11, "#f59e0b", "#0f172a", 12);
+  drawLabel("FINISH 1000m", finishX + finW / 2, gantryY + 11, "#f59e0b", "#0f172a", 12);
 
   // --- VEHICLE 1: MOBIL SPORT (TOP VIEW) ---
   const carX = startX + raceState.xCar * PX_PER_M;
@@ -803,18 +803,32 @@ function updatePhysics(dt) {
     const mT = Math.max(1000, parseFloat(truckMass.value) || 8000);
     const aCar = F / mC;
     const aTruck = F / mT;
-    raceState.vCar += aCar * scaledDt;
-    raceState.vTruck += aTruck * scaledDt;
-    // x in metres, scale to pixels: finishDistance=1000m, canvas scaled so 1 pixel = 1m of xCar
+    // Vehicle 1 (Car): Accelerate before 1000m, brake smoothly after 1000m
+    if (raceState.xCar < 1000) {
+      raceState.vCar += aCar * scaledDt;
+    } else {
+      // Brake after crossing 1000m finish line
+      raceState.vCar = Math.max(0, raceState.vCar - 18 * scaledDt);
+    }
     raceState.xCar += raceState.vCar * scaledDt;
+
+    // Vehicle 2 (Truck): Accelerate before 1000m, brake smoothly after 1000m
+    if (raceState.xTruck < 1000) {
+      raceState.vTruck += aTruck * scaledDt;
+    } else {
+      // Brake after crossing 1000m finish line
+      raceState.vTruck = Math.max(0, raceState.vTruck - 12 * scaledDt);
+    }
     raceState.xTruck += raceState.vTruck * scaledDt;
 
-    // Check winner at finish line 500m
-    if ((raceState.xCar >= 500 || raceState.xTruck >= 500) && !raceState.winner) {
+    // Check winner at finish line 1000m
+    if ((raceState.xCar >= 1000 || raceState.xTruck >= 1000) && !raceState.winner) {
       raceState.winner = raceState.xCar >= raceState.xTruck ? "Mobil Sport" : "Truk Beban";
       raceState.finishTime = elapsedTime;
     }
-    if (raceState.xCar >= 650 && raceState.xTruck >= 650) {
+
+    // Stop simulation when BOTH vehicles have come to a complete stop after finish
+    if ((raceState.xCar >= 1000 && raceState.vCar === 0) && (raceState.xTruck >= 1000 && raceState.vTruck === 0)) {
       isPlaying = false;
       btnPlayPause.textContent = "Mulai Simulasi";
     }
