@@ -828,6 +828,7 @@ function updatePhysics(dt) {
     trolleyState.v = Math.max(0, trolleyState.v + a * scaledDt);
     trolleyState.x += trolleyState.v * scaledDt * 40;
     if (trolleyState.x > canvas.width * 0.5) { trolleyState.x = canvas.width * 0.5; isPlaying = false; btnPlayPause.textContent = "Mulai Simulasi"; }
+    elapsedTime += scaledDt;
     pushChart(elapsedTime, trolleyState.v, Math.max(0, a));
   } else if (currentScenario === "race") {
     const F = Math.max(1, parseFloat(raceForce.value) || 10000);
@@ -864,6 +865,7 @@ function updatePhysics(dt) {
       isPlaying = false;
       btnPlayPause.textContent = "Mulai Simulasi";
     }
+    elapsedTime += scaledDt;
     pushChart(elapsedTime, raceState.vCar, raceState.vTruck);
   } else if (currentScenario === "rocket") {
     const mTon = parseFloat(rocketMass.value) || 5000;
@@ -908,7 +910,8 @@ function updatePhysics(dt) {
       btnPlayPause.textContent = "Mulai Simulasi";
     }
     
-    // Chart shows real elapsed time, but we plot the current V and A
+    elapsedTime += scaledDtRocket;
+    // Chart shows scaled elapsed time, preserving physics integrity v = a*t
     pushChart(elapsedTime, rocketState.v, Math.max(0, a));
   } else if (currentScenario === "braking") {
     const v0 = Math.max(1, parseFloat(carSpeed.value) || 20);
@@ -951,10 +954,9 @@ function updatePhysics(dt) {
         btnPlayPause.textContent = "Mulai Simulasi";
       }
     }
+    elapsedTime += scaledDt;
     pushChart(elapsedTime, brakingState.vCar, brakingState.vBox);
   }
-
-  elapsedTime += dt;
 }
 
 // ===== DRAW SCENE =====
