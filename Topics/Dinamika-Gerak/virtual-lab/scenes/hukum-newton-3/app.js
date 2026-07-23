@@ -46,16 +46,15 @@ const chartTitle = document.getElementById("chartTitle");
 const btnPlayPause = document.getElementById("btnPlayPause");
 const btnReset = document.getElementById("btnReset");
 
-// ===== STATE =====
+// State
 let isPlaying = false;
 let elapsedTime = 0;
 let lastTime = 0;
 
-// Friction sim state
+// Per-scenario states
 const frictionObj = { x: 0, v: 0, state: "static" }; // state: static | sliding
-
-// Lift sim state  
-const liftObj = { y: 0, vy: 0, direction: 1 }; // direction: 1=up, -1=down
+const tensionState = { x1: 0, y2: 0, v: 0 };
+const liftObj = { y: 0, vy: 0, direction: 1 };
 
 // Chart
 let chart = null;
@@ -107,6 +106,20 @@ function pushChartData(t, val1, val2) {
 }
 
 // ===== DRAW UTILITIES =====
+function drawLabel(text, x, y, bgCol, fgCol = "#ffffff", fontSize = 12) {
+  ctx.font = `bold ${fontSize}px Inter,sans-serif`;
+  const m = ctx.measureText(text);
+  const w = m.width + 12;
+  const h = fontSize + 8;
+  ctx.fillStyle = bgCol;
+  ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, 4); ctx.fill();
+  ctx.fillStyle = fgCol;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y);
+  ctx.textBaseline = "alphabetic";
+}
+
 function drawArrow(x, y, dx, dy, color, label, lineW = 3) {
   const len = Math.hypot(dx, dy);
   if (len < 2) return;
@@ -119,7 +132,7 @@ function drawArrow(x, y, dx, dy, color, label, lineW = 3) {
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len - ah, 0); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(len, 0); ctx.lineTo(len - ah, -6); ctx.lineTo(len - ah, 6); ctx.fill();
   if (label) {
-    ctx.font = "bold 12px Inter,sans-serif"; ctx.textAlign = "center"; ctx.fillText(label, len / 2, -10);
+    drawLabel(label, len / 2, -14, color, "#ffffff", 11);
   }
   ctx.restore();
 }
@@ -162,11 +175,16 @@ function drawCeiling(y, color = "#94a3b8") {
 }
 
 // ===== SCENARIO: GAYA NORMAL & BERAT =====
-function drawNormalScenario() {
+function drawNormalScenario(dt = 0) {
   const m = Math.max(1, parseFloat(massInput.value) || 50);
   const g = Math.max(0.1, parseFloat(gravityInput.value) || 9.8);
   const W = m * g;
   const N = W;
+
+  if (isPlaying && dt > 0) {
+    elapsedTime += dt;
+    pushChartData(elapsedTime, W);
+  }
 
   stat1Label.textContent = "Gaya Berat (W)"; stat1Value.textContent = W.toFixed(1); stat1Unit.textContent = "N";
   stat2Label.textContent = "Gaya Normal (N)"; stat2Value.textContent = N.toFixed(1); stat2Unit.textContent = "N";
@@ -215,27 +233,41 @@ function drawFrictionScenario(dt = 0) {
 
   let fActual = 0, netF = 0;
 
+  // Rigorous Physics State Machine for Friction
   if (frictionObj.state === "static") {
-    if (F <= fsMax) {
-      fActual = F; netF = 0;
-    } else {
+    if (F > fsMax) {
       frictionObj.state = "sliding";
-      fActual = fk; netF = F - fk;
-    }
-  } else {
-    fActual = fk; netF = F - fk;
-    if (netF < 0 && frictionObj.v <= 0) {
-      frictionObj.state = "static"; frictionObj.v = 0; netF = 0; fActual = F;
     }
   }
 
+  if (frictionObj.state === "sliding") {
+    fActual = fk;
+    netF = F - fk;
+  } else {
+    fActual = Math.min(F, fsMax);
+    netF = 0;
+    frictionObj.v = 0;
+  }
+
   if (isPlaying && dt > 0) {
-    const a = netF / m;
-    frictionObj.v += a * dt;
-    if (frictionObj.v < 0) frictionObj.v = 0;
-    frictionObj.x += frictionObj.v * dt * 60;
-    const maxX = canvas.width / 2 - 60;
-    if (frictionObj.x > maxX) frictionObj.x = maxX;
+    if (frictionObj.state === "sliding") {
+      const a = netF / m;
+      frictionObj.v += a * dt;
+      if (frictionObj.v <= 0) {
+        frictionObj.v = 0;
+        if (F <= fsMax) {
+          frictionObj.state = "static";
+          fActual = F;
+          netF = 0;
+        }
+      }
+      frictionObj.x += frictionObj.v * dt * 45;
+      const maxX = canvas.width * 0.35;
+      if (frictionObj.x > maxX) {
+        frictionObj.x = maxX;
+        frictionObj.v = 0;
+      }
+    }
     elapsedTime += dt;
     pushChartData(elapsedTime, frictionObj.v, netF);
   }
@@ -297,7 +329,7 @@ function drawTensionScenario(dt = 0) {
   const g = Math.max(0.1, parseFloat(tensionGravity.value) || 9.8);
   const mode = tensionMode.value;
 
-  let T = 0, T2 = 0, netF = 0, accel = 0, W1 = m * g;
+  let T = 0, netF = 0, accel = 0, W1 = m * g;
 
   if (mode === "hang1") {
     T = W1; netF = 0;
@@ -308,23 +340,40 @@ function drawTensionScenario(dt = 0) {
   } else if (mode === "hang2") {
     const m2 = Math.max(1, parseFloat(hangMass2.value) || 30);
     const W2 = m2 * g;
-    // m1 on table, m2 hanging → T = m2*g*m1/(m1+m2)
-    // ignoring friction: a = m2*g/(m1+m2), T = m1*m2*g/(m1+m2)
+    // System physics m1 on table, m2 hanging
     accel = W2 / (m + m2);
-    T = m * accel; T2 = W2 - m2 * accel; // both should equal
+    T = m * accel;
     netF = W2;
     stat1Label.textContent = "Tegangan Tali T"; stat1Value.textContent = T.toFixed(1); stat1Unit.textContent = "N";
     stat2Label.textContent = "Berat Beban W₂"; stat2Value.textContent = W2.toFixed(1); stat2Unit.textContent = "N";
     stat3Label.textContent = "Percepatan a"; stat3Value.textContent = accel.toFixed(2); stat3Unit.textContent = "m/s²";
     stat4Label.textContent = "ΣF Sistem"; stat4Value.textContent = netF.toFixed(1); stat4Unit.textContent = "N";
+
+    if (isPlaying && dt > 0) {
+      tensionState.v += accel * dt;
+      tensionState.x1 += tensionState.v * dt * 40;
+      tensionState.y2 += tensionState.v * dt * 40;
+      if (tensionState.x1 > 160) {
+        tensionState.x1 = 160;
+        tensionState.y2 = 160;
+        tensionState.v = 0;
+      }
+      elapsedTime += dt;
+      pushChartData(elapsedTime, T, accel);
+    }
   } else {
     const a = parseFloat(tensionLiftAccel.value) || 3;
-    T = m * (g + a);
+    T = Math.max(0, m * (g + a));
     netF = Math.abs(T - W1);
     stat1Label.textContent = "Tegangan Tali T"; stat1Value.textContent = T.toFixed(1); stat1Unit.textContent = "N";
     stat2Label.textContent = "Gaya Berat W"; stat2Value.textContent = W1.toFixed(1); stat2Unit.textContent = "N";
     stat3Label.textContent = "Percepatan Lift a"; stat3Value.textContent = a.toFixed(1); stat3Unit.textContent = "m/s²";
     stat4Label.textContent = "T = m(g+a)"; stat4Value.textContent = T.toFixed(1); stat4Unit.textContent = "N";
+
+    if (isPlaying && dt > 0) {
+      elapsedTime += dt;
+      pushChartData(elapsedTime, T, a);
+    }
   }
 
   const cx = canvas.width / 2, cy = canvas.height * 0.5;
@@ -333,7 +382,6 @@ function drawTensionScenario(dt = 0) {
   drawCeiling(80);
 
   if (mode === "hang1") {
-    // Rope from ceiling to box
     ctx.strokeStyle = "#d97706"; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(cx, 80); ctx.lineTo(cx, cy - 40); ctx.stroke();
     drawBox(cx, cy, 90, 70, "#e2e8f0", "#3b82f6", `${m} kg`, `W=${W1.toFixed(0)}N`);
@@ -348,43 +396,42 @@ function drawTensionScenario(dt = 0) {
     // Table
     ctx.fillStyle = "#92400e"; ctx.fillRect(cx - 150, tableY, 300, 15);
     ctx.fillStyle = "#b45309"; ctx.fillRect(cx - 140, tableY + 15, 20, 60); ctx.fillRect(cx + 120, tableY + 15, 20, 60);
-    // m1 on table
-    drawBox(cx - 50, tableY - 35, 80, 60, "#dbeafe", "#3b82f6", `m₁=${m}kg`);
+    
+    // m1 on table with motion tensionState.x1
+    const m1X = cx - 110 + tensionState.x1;
+    drawBox(m1X, tableY - 35, 75, 55, "#dbeafe", "#3b82f6", `m₁=${m}kg`);
+    
     // rope over edge
     ctx.strokeStyle = "#d97706"; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(cx + 30, tableY - 35); ctx.lineTo(cx + 150, tableY - 35); ctx.lineTo(cx + 150, tableY + 30); ctx.stroke();
-    // m2 hanging
-    drawBox(cx + 150, tableY + 70, 70, 55, "#fce7f3", "#ec4899", `m₂=${m2}kg`);
-    drawArrow(cx + 150, tableY + 95, 0, 50, "#ef4444", `W₂=${(m2*g).toFixed(0)}N`);
-    // T arrows
-    drawArrow(cx - 10, tableY - 35, 60, 0, "#10b981", `T=${T.toFixed(0)}N`);
+    ctx.beginPath(); ctx.moveTo(m1X + 37, tableY - 35); ctx.lineTo(cx + 150, tableY - 35); ctx.lineTo(cx + 150, tableY + 30 + tensionState.y2); ctx.stroke();
+    
+    // m2 hanging with motion tensionState.y2
+    const m2Y = tableY + 60 + tensionState.y2;
+    drawBox(cx + 150, m2Y, 65, 50, "#fce7f3", "#ec4899", `m₂=${m2}kg`);
+    drawArrow(cx + 150, m2Y + 25, 0, 45, "#ef4444", `W₂=${(m2*g).toFixed(0)}N`);
+    drawArrow(m1X + 37, tableY - 35, 50, 0, "#10b981", `T=${T.toFixed(0)}N`);
+    
     statusMessage.textContent = `a = ${accel.toFixed(2)} m/s², T = ${T.toFixed(1)} N`;
     statusMessage.style.borderColor = "#3b82f6";
     conclusionText.textContent = `Sistem: m₁=${m}kg di meja, m₂=${m2}kg menggantung. Resultan gaya ΣF = W₂ = ${(m2*g).toFixed(0)} N menggerakkan sistem total (m₁+m₂=${m+m2}kg). Percepatan a = W₂/(m₁+m₂) = ${accel.toFixed(2)} m/s², Tegangan T = m₁·a = ${T.toFixed(1)} N.`;
   } else {
-    // Elevator
+    // Elevator mode
     const a = parseFloat(tensionLiftAccel.value) || 3;
     const liftY = cy;
-    // Rope from ceiling
     ctx.strokeStyle = "#d97706"; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.moveTo(cx, 80); ctx.lineTo(cx, liftY - 80); ctx.stroke();
-    // Lift box (elevator)
     ctx.fillStyle = "#1e40af22"; ctx.fillRect(cx - 60, liftY - 80, 120, 130);
     ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 3; ctx.strokeRect(cx - 60, liftY - 80, 120, 130);
-    // Person inside
     ctx.fillStyle = "#f59e0b"; ctx.beginPath(); ctx.arc(cx, liftY - 30, 16, 0, Math.PI*2); ctx.fill();
     ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 5; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(cx, liftY - 14); ctx.lineTo(cx, liftY + 20); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(cx, liftY); ctx.lineTo(cx - 20, liftY + 20); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(cx, liftY); ctx.lineTo(cx + 20, liftY + 20); ctx.stroke();
-    // T arrow
     drawArrow(cx, liftY - 80, 0, -(T * 0.08 + 40), "#10b981", `T=${T.toFixed(0)}N`);
-    // W arrow
     drawArrow(cx, liftY + 50, 0, W1 * 0.08 + 30, "#ef4444", `W=${W1.toFixed(0)}N`);
-    // accel direction
-    if (a > 0) { ctx.fillStyle = "#10b981"; ctx.font = "bold 14px Inter"; ctx.textAlign = "center"; ctx.fillText("Dipercepat Naik", cx, liftY - 110); }
-    else if (a < -9.7) { ctx.fillStyle = "#ef4444"; ctx.font = "bold 14px Inter"; ctx.fillText("JATUH BEBAS (T = 0)", cx, liftY - 110); }
-    else { ctx.fillStyle = "#ef4444"; ctx.font = "bold 14px Inter"; ctx.fillText("Dipercepat Turun", cx, liftY - 110); }
+    if (a > 0) { drawLabel("Dipercepat Naik", cx, liftY - 110, "#10b981", "#ffffff", 12); }
+    else if (a < -9.7) { drawLabel("JATUH BEBAS (T = 0)", cx, liftY - 110, "#ef4444", "#ffffff", 12); }
+    else { drawLabel("Dipercepat Turun", cx, liftY - 110, "#ef4444", "#ffffff", 12); }
 
     statusMessage.textContent = `T = m(g${a >= 0 ? "+" : ""}${a.toFixed(1)}) = ${T.toFixed(1)} N`;
     statusMessage.style.borderColor = T > W1 ? "#10b981" : (T < 0 ? "#ef4444" : "#f59e0b");
@@ -471,7 +518,7 @@ function drawLiftScenario(dt = 0) {
 // ===== MAIN DRAW =====
 function drawScene(dt = 0) {
   const scenario = scenarioSelect.value;
-  if (scenario === "normal") drawNormalScenario();
+  if (scenario === "normal") drawNormalScenario(dt);
   else if (scenario === "friction") drawFrictionScenario(dt);
   else if (scenario === "tension") drawTensionScenario(dt);
   else if (scenario === "lift") drawLiftScenario(dt);
@@ -523,6 +570,7 @@ function resetSim(resetChart = true) {
   elapsedTime = 0;
   lastTime = 0;
   frictionObj.x = 0; frictionObj.v = 0; frictionObj.state = "static";
+  tensionState.x1 = 0; tensionState.y2 = 0; tensionState.v = 0;
   liftObj.y = 0; liftObj.vy = 0;
   btnPlayPause.textContent = "Mulai Simulasi";
   if (resetChart && chart) { chart.data.labels = []; chart.data.datasets.forEach(d => d.data = []); chart.update("none"); }

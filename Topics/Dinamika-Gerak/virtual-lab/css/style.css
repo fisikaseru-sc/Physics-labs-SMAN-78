@@ -89,6 +89,7 @@ header p {
 /* TABS */
 .nav-tabs {
   display: flex;
+  align-items: center;
   gap: 12px;
 }
 
