@@ -1088,8 +1088,6 @@ function validateInput(el) {
   });
 });
 
-});
-
 // ===== INIT =====
 switchScenario();
 requestAnimationFrame(simulationLoop);
