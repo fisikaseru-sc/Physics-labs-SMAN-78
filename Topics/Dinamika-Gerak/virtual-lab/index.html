@@ -191,8 +191,8 @@
       let accessData = JSON.parse(
         localStorage.getItem("dinamika_gerak_access")
       );
-      if (!accessData) {
-        accessData = ["p1", "p2"]; // Default open
+      if (!accessData || accessData.length < 3) { // Force unlock for current users
+        accessData = ["p1", "p2", "p3", "p4", "p5", "p6", "p7"]; // Default open ALL
         localStorage.setItem(
           "dinamika_gerak_access",
           JSON.stringify(accessData)
