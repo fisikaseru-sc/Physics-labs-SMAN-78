@@ -219,8 +219,8 @@ function drawRaceScene() {
   const mTruck = Math.max(1000, parseFloat(truckMass.value) || 8000);
   const aCar = F / mCar, aTruck = F / mTruck;
 
-  const PX_PER_M = 1; // 1 px = 1 metre (xCar is in metres now)
-  const finishDistance = 1000; // 1000m
+  const PX_PER_M = 1; // 1 px = 1 metre
+  const finishDistance = 500; // Finish line at 500m
   const startX = 60;
   const finishX = startX + finishDistance * PX_PER_M;
 
@@ -276,7 +276,7 @@ function drawRaceScene() {
   ctx.font = "bold 12px Inter";
   ctx.fillStyle = "#94a3b8";
   ctx.textAlign = "center";
-  for (let dist = 100; dist <= 1000; dist += 100) {
+  for (let dist = 100; dist <= 500; dist += 100) {
     const markX = startX + dist;
     ctx.strokeStyle = "#64748b88";
     ctx.lineWidth = 1.5;
@@ -294,18 +294,30 @@ function drawRaceScene() {
   ctx.font = "bold 11px Inter";
   ctx.fillText("START", startX - 22, lane1Y - 14);
 
-  // Checkered Finish Line
-  const finW = 24;
-  for (let y = lane1Y; y < lane2Y + laneH + 12; y += 12) {
-    for (let x = finishX; x < finishX + finW; x += 12) {
-      const isBlack = (Math.floor(x / 12) + Math.floor(y / 12)) % 2 === 0;
-      ctx.fillStyle = isBlack ? "#000000" : "#ffffff";
-      ctx.fillRect(x, y, 12, 12);
+  // Checkered Finish Line & Gantry Arch Structure
+  const finW = 32;
+  for (let y = lane1Y; y < lane2Y + laneH + 12; y += 16) {
+    for (let x = finishX; x < finishX + finW; x += 16) {
+      const isBlack = (Math.floor(x / 16) + Math.floor(y / 16)) % 2 === 0;
+      ctx.fillStyle = isBlack ? "#090d16" : "#f8fafc";
+      ctx.fillRect(x, y, 16, 16);
     }
   }
-  ctx.fillStyle = "#10b981";
-  ctx.font = "bold 13px Inter";
-  ctx.fillText("FINISH (1000m)", finishX + 12, lane1Y - 14);
+
+  // Gantry Overhead Arch Posts (3D Metallic Poles)
+  ctx.fillStyle = "#475569";
+  ctx.fillRect(finishX - 4, lane1Y - 20, 8, laneH * 2 + 40);
+  ctx.fillRect(finishX + finW - 4, lane1Y - 20, 8, laneH * 2 + 40);
+
+  // Overhead Gantry Sign Board
+  const gantryY = lane1Y - 32;
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(finishX - 10, gantryY, finW + 20, 22);
+  ctx.strokeStyle = "#f59e0b";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(finishX - 10, gantryY, finW + 20, 22);
+  
+  drawLabel("FINISH 500m", finishX + finW / 2, gantryY + 11, "#f59e0b", "#0f172a", 12);
 
   // --- VEHICLE 1: MOBIL SPORT (TOP VIEW) ---
   const carX = startX + raceState.xCar * PX_PER_M;
@@ -416,9 +428,19 @@ function drawRaceScene() {
   accelValue.textContent = `${aCar.toFixed(2)} / ${aTruck.toFixed(2)}`;
   netForceValue.textContent = F.toFixed(0);
   timeValue.textContent = elapsedTime.toFixed(2);
-  statusMessage.textContent = raceState.winner ? `Balapan Selesai!` : `a_mobil=${aCar.toFixed(2)} m/s² >> a_truk=${aTruck.toFixed(2)} m/s² — Hukum II Newton!`;
-  statusMessage.style.borderColor = "#3b82f6";
-  conclusionText.textContent = `Gaya mesin sama F = ${F} N. a = F/m → Mobil sport (${mCar}kg): a = ${aCar.toFixed(2)} m/s². Truk (${mTruck}kg): a = ${aTruck.toFixed(2)} m/s². Massa lebih kecil meningkatkan percepatan secara drastis (Hukum II Newton).`;
+
+  if (raceState.winner) {
+    statusMessage.textContent = `Pemenang: ${raceState.winner}! (Waktu Finish: ${raceState.finishTime.toFixed(2)}s)`;
+    statusMessage.style.borderColor = "#10b981";
+    conclusionText.textContent = `Pemenang balapan: ${raceState.winner}! Karena gaya dorong sama (F = ${F} N), kendaraan bermassa lebih ringan (Mobil Sport ${mCar}kg) menghasilkan percepatan jauh lebih besar (a = ${aCar.toFixed(2)} m/s²) dibanding Truk (${mTruck}kg, a = ${aTruck.toFixed(2)} m/s²). Ini membuktikan Hukum II Newton (a = F/m)!`;
+
+    // Winner Overlay Badge over Finish Line
+    drawLabel(`PEMENANG: ${raceState.winner.toUpperCase()}!`, finishX + 15, lane1Y + laneH, "#10b981", "#ffffff", 14);
+  } else {
+    statusMessage.textContent = `a_mobil=${aCar.toFixed(2)} m/s² >> a_truk=${aTruck.toFixed(2)} m/s² — Hukum II Newton!`;
+    statusMessage.style.borderColor = "#3b82f6";
+    conclusionText.textContent = `Gaya mesin sama F = ${F} N. a = F/m → Mobil sport (${mCar}kg): a = ${aCar.toFixed(2)} m/s². Truk (${mTruck}kg): a = ${aTruck.toFixed(2)} m/s². Massa lebih kecil meningkatkan percepatan secara drastis (Hukum II Newton).`;
+  }
 }
 
 // ===== ROCKET DRAW (TARGET FINISH LINE & DYNAMIC CAMERA) =====
@@ -787,12 +809,12 @@ function updatePhysics(dt) {
     raceState.xCar += raceState.vCar * scaledDt;
     raceState.xTruck += raceState.vTruck * scaledDt;
 
-    // Check winner at finish line 1000m
-    if ((raceState.xCar >= 1000 || raceState.xTruck >= 1000) && !raceState.winner) {
+    // Check winner at finish line 500m
+    if ((raceState.xCar >= 500 || raceState.xTruck >= 500) && !raceState.winner) {
       raceState.winner = raceState.xCar >= raceState.xTruck ? "Mobil Sport" : "Truk Beban";
       raceState.finishTime = elapsedTime;
     }
-    if (raceState.xCar >= 1200 && raceState.xTruck >= 1200) {
+    if (raceState.xCar >= 650 && raceState.xTruck >= 650) {
       isPlaying = false;
       btnPlayPause.textContent = "Mulai Simulasi";
     }
