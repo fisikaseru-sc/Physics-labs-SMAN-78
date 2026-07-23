@@ -116,7 +116,7 @@
               <div class="input-row"><input type="number" id="raceForce" min="1000" max="100000" value="10000" step="1000" class="number-input" /></div>
             </div>
             <div class="control-group mt-10">
-              <label>Massa Mobil Sport (kg) — tetap</label>
+              <label>Massa Mobil Sport (kg)</label>
               <div class="input-row"><input type="number" id="carMass" min="500" max="5000" value="1000" step="100" class="number-input" /></div>
             </div>
             <div class="control-group mt-10">
@@ -128,9 +128,14 @@
           <!-- ROCKET CONTROLS -->
           <div id="rocketControls" class="scenario-controls mt-10">
             <div class="control-group mt-10">
-              <label>Gaya Dorong Roket F (N)</label>
-              <div class="input-row"><input type="number" id="rocketThrust" min="0" max="100000" value="2000" step="100" class="number-input" /></div>
-              <span class="info-text mt-5" style="display:block;color:#60a5fa">*Massa roket = 100 kg. Berat = 980 N. Butuh F &gt; 980 N untuk terbang!</span>
+              <label>Massa Kendaraan m (Ton)</label>
+              <div class="input-row"><input type="number" id="rocketMass" min="1" max="100000" value="5000" step="10" class="number-input" /></div>
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*Konteks: Massa Starship ~5000 Ton. 1 Ton = 1.000 kg.</span>
+            </div>
+            <div class="control-group mt-10">
+              <label>Gaya Dorong F (MegaNewton / MN)</label>
+              <div class="input-row"><input type="number" id="rocketThrust" min="0" max="200000" value="70" step="1" class="number-input" /></div>
+              <span class="info-text mt-5" style="display:block;color:#60a5fa">*1 MN = 1.000.000 N. Butuh F > W agar terbang!</span>
             </div>
           </div>
 

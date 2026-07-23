@@ -16,6 +16,7 @@ const trolleyFriction = document.getElementById("trolleyFriction");
 const raceForce = document.getElementById("raceForce");
 const carMass = document.getElementById("carMass");
 const truckMass = document.getElementById("truckMass");
+const rocketMass = document.getElementById("rocketMass");
 const rocketThrust = document.getElementById("rocketThrust");
 const carSpeed = document.getElementById("carSpeed");
 const brakingMass = document.getElementById("brakingMass");
@@ -146,7 +147,7 @@ function drawTrolleyScene() {
   const m = Math.max(1, parseFloat(trolleyMass.value) || 50);
   const F = Math.max(0, parseFloat(trolleyForce.value) || 200);
   const f = Math.max(0, parseFloat(trolleyFriction.value) || 20);
-  const netF = Math.max(0, F - f);
+  const netF = trolleyState.v > 0 ? (F - f) : Math.max(0, F - f);
   const a = netF / m;
 
   const groundY = canvas.height * 0.7;
@@ -429,14 +430,17 @@ function drawRaceScene() {
   timeValue.textContent = elapsedTime.toFixed(2);
 
   if (raceState.winner) {
+    const winnerName = raceState.winner;
+    const winnerMass = winnerName === "Mobil Sport" ? mCar : mTruck;
+    const winnerAccel = winnerName === "Mobil Sport" ? aCar : aTruck;
     statusMessage.textContent = `Pemenang: ${raceState.winner}! (Waktu Finish: ${raceState.finishTime.toFixed(2)}s)`;
     statusMessage.style.borderColor = "#10b981";
-    conclusionText.textContent = `Pemenang balapan: ${raceState.winner}! Karena gaya dorong sama (F = ${F} N), kendaraan bermassa lebih ringan (Mobil Sport ${mCar}kg) menghasilkan percepatan jauh lebih besar (a = ${aCar.toFixed(2)} m/s²) dibanding Truk (${mTruck}kg, a = ${aTruck.toFixed(2)} m/s²). Ini membuktikan Hukum II Newton (a = F/m)!`;
+    conclusionText.textContent = `Pemenang balapan: ${winnerName}! Karena gaya dorong sama (F = ${F} N), kendaraan bermassa lebih ringan (${winnerName} ${winnerMass} kg) menghasilkan percepatan lebih besar (a = ${winnerAccel.toFixed(2)} m/s²). Ini membuktikan Hukum II Newton (a = F/m)!`;
 
     // Winner Overlay Badge over Finish Line
     drawLabel(`PEMENANG: ${raceState.winner.toUpperCase()}!`, finishX + 15, lane1Y + laneH, "#10b981", "#ffffff", 14);
   } else {
-    statusMessage.textContent = `a_mobil=${aCar.toFixed(2)} m/s² >> a_truk=${aTruck.toFixed(2)} m/s² — Hukum II Newton!`;
+    statusMessage.textContent = `a_mobil=${aCar.toFixed(2)} m/s² | a_truk=${aTruck.toFixed(2)} m/s² — Hukum II Newton!`;
     statusMessage.style.borderColor = "#3b82f6";
     conclusionText.textContent = `Gaya mesin sama F = ${F} N. a = F/m → Mobil sport (${mCar}kg): a = ${aCar.toFixed(2)} m/s². Truk (${mTruck}kg): a = ${aTruck.toFixed(2)} m/s². Massa lebih kecil meningkatkan percepatan secara drastis (Hukum II Newton).`;
   }
@@ -444,28 +448,36 @@ function drawRaceScene() {
 
 // ===== ROCKET DRAW (TARGET FINISH LINE & DYNAMIC CAMERA) =====
 function drawRocketScene() {
-  const F = Math.max(0, parseFloat(rocketThrust.value) || 2000);
-  const m = 100;
+  const mTon = parseFloat(rocketMass.value) || 5000;
+  const m = mTon * 1000; // in kg
+  const F_MN = parseFloat(rocketThrust.value) || 70;
+  const F = F_MN * 1000000; // in N
   const g = 9.8;
   const W = m * g;
   const netF = F - W;
   const a = netF / m;
 
-  const targetAltitude = 500; // Target Finish line at 500m
+  const targetAltitude = 384400000; // 384,400 km in metres
+  const visualMax = 10000; // Moon is 10000 pixels above launchpad
+  const visualScale = visualMax / targetAltitude;
   const launchPadY = canvas.height * 0.85;
 
+  const rocketVisualY = rocketState.y * visualScale;
+
   // Dynamic Camera Y tracking rocket height
-  const targetCamY = Math.max(0, rocketState.y - canvas.height * 0.4);
+  // Offset ensures rocket stays exactly in the middle of canvas when flying
+  const offset = launchPadY - 80 - canvas.height * 0.5;
+  const targetCamY = Math.max(0, rocketVisualY - offset);
   camY += (targetCamY - camY) * 0.1;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Environment Gradient based on camera altitude
-  const altRatio = Math.min(1, camY / 600);
+  // Environment Gradient based on altitude
+  const altRatio = Math.min(1, camY / visualMax);
   const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  if (altRatio < 0.3) {
+  if (altRatio < 0.1) {
     skyGrad.addColorStop(0, "#1e3a5f"); skyGrad.addColorStop(1, "#38bdf8");
-  } else if (altRatio < 0.7) {
+  } else if (altRatio < 0.3) {
     skyGrad.addColorStop(0, "#0f172a"); skyGrad.addColorStop(0.5, "#1e3a5f"); skyGrad.addColorStop(1, "#3b82f6");
   } else {
     skyGrad.addColorStop(0, "#020617"); skyGrad.addColorStop(0.7, "#0f172a"); skyGrad.addColorStop(1, "#1e1b4b");
@@ -473,21 +485,21 @@ function drawRocketScene() {
   ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Stars in high atmosphere & space
-  if (altRatio > 0.2) {
-    for (let i = 0; i < 50; i++) {
+  if (altRatio > 0.05) {
+    for (let i = 0; i < 80; i++) {
       const sx = (i * 137.5) % canvas.width;
       const sy = (i * 73.1) % canvas.height;
-      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, altRatio * 1.2 * (0.4 + (i % 5) * 0.12))})`;
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, altRatio * 1.5 * (0.4 + (i % 5) * 0.12))})`;
       ctx.beginPath(); ctx.arc(sx, sy, 1.5, 0, Math.PI * 2); ctx.fill();
     }
   }
 
   // Earth Curvature visible in deep space
-  if (camY > 300) {
+  if (camY > 500) {
     ctx.save();
     ctx.fillStyle = "#0284c7";
     ctx.beginPath();
-    ctx.ellipse(canvas.width / 2, canvas.height + (camY - 300) * 0.5 + 400, canvas.width * 1.2, 500, 0, 0, Math.PI * 2);
+    ctx.ellipse(canvas.width / 2, canvas.height + (camY - 500) * 0.5 + 600, canvas.width * 1.5, 700, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -496,7 +508,7 @@ function drawRocketScene() {
   ctx.translate(0, camY);
 
   const cx = canvas.width / 2;
-  const rocketY = launchPadY - 80 - rocketState.y;
+  const rocketY = launchPadY - 80 - rocketVisualY;
 
   // Ground level launchpad (visible when camera near ground)
   if (camY < canvas.height) {
@@ -506,35 +518,48 @@ function drawRocketScene() {
     ctx.fillRect(cx - 45, launchPadY - 10, 90, 15);
   }
 
-  // Altitude Ruler Grid Lines (100m, 200m, 300m, 400m, 500m TARGET)
   ctx.font = "bold 12px Inter";
   ctx.textAlign = "left";
-  for (let alt = 100; alt <= targetAltitude; alt += 100) {
-    const markY = launchPadY - 80 - alt;
-    const isFinish = (alt === targetAltitude);
-    ctx.strokeStyle = isFinish ? "#f59e0b" : "rgba(255,255,255,0.3)";
-    ctx.lineWidth = isFinish ? 3 : 1;
-    ctx.setLineDash(isFinish ? [15, 10] : [5, 5]);
-    ctx.beginPath();
-    ctx.moveTo(50, markY);
-    ctx.lineTo(canvas.width - 50, markY);
-    ctx.stroke();
-    ctx.setLineDash([]);
 
-    if (isFinish) {
-      // TARGET MOON FINISH LINE BANNER
-      drawLabel("FINISH: Mendarat di Bulan (500m)", canvas.width - 150, markY, "#f59e0b", "#0f172a", 12);
-    } else {
-      drawLabel(`Ketinggian: ${alt}m`, 80, markY, "rgba(0,0,0,0.4)", "#ffffff", 11);
+  // Markers
+  const markers = [
+    { label: "10.000 km", val: 10000000 },
+    { label: "100.000 km", val: 100000000 },
+    { label: "200.000 km", val: 200000000 },
+    { label: "300.000 km", val: 300000000 },
+    { label: "Bulan (384.400 km)", val: targetAltitude }
+  ];
+
+  markers.forEach(m => {
+    const markVisY = m.val * visualScale;
+    const markY = launchPadY - 80 - markVisY;
+    
+    // Only draw if within camera view loosely
+    if (markY + camY > -500 && markY + camY < canvas.height + 500) {
+      const isFinish = (m.val === targetAltitude);
+      ctx.strokeStyle = isFinish ? "#f59e0b" : "rgba(255,255,255,0.3)";
+      ctx.lineWidth = isFinish ? 3 : 1;
+      ctx.setLineDash(isFinish ? [15, 10] : [5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(50, markY);
+      ctx.lineTo(canvas.width - 50, markY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      if (isFinish) {
+        drawLabel(`FINISH: ${m.label}`, canvas.width - 150, markY, "#f59e0b", "#0f172a", 12);
+      } else {
+        drawLabel(`Ketinggian: ${m.label}`, 80, markY, "rgba(0,0,0,0.4)", "#ffffff", 11);
+      }
     }
-  }
+  });
 
-  // Draw Moon at Finish Line (500m)
-  const moonY = launchPadY - 80 - targetAltitude;
+  // Draw Moon at Finish Line
+  const moonY = launchPadY - 80 - targetAltitude * visualScale;
   ctx.save();
   ctx.fillStyle = "#e2e8f0"; // Moon surface
   ctx.shadowColor = "#f8fafc";
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = 40;
   ctx.beginPath();
   ctx.arc(cx, moonY - 30, 85, 0, Math.PI * 2);
   ctx.fill();
@@ -582,8 +607,8 @@ function drawRocketScene() {
   ctx.restore();
 
   // Exhaust Flame & Thrust Action Vector
-  if (F > 100) {
-    const flameH = Math.min(90, netF * 0.04 + 25) * (0.85 + 0.3 * Math.sin(rocketState.flame * 0.6));
+  if (F > W * 0.1) {
+    const flameH = Math.min(120, (netF/1000000) * 2 + 50) * (0.85 + 0.3 * Math.sin(rocketState.flame * 0.6));
     rocketState.flame++;
     const flameGrad = ctx.createLinearGradient(cx, rocketY + 50, cx, rocketY + 50 + flameH);
     flameGrad.addColorStop(0, "#f59e0b"); flameGrad.addColorStop(0.5, "#ef4444"); flameGrad.addColorStop(1, "rgba(239,68,68,0)");
@@ -594,49 +619,51 @@ function drawRocketScene() {
     if (isPlaying && Math.random() < 0.6) {
       rocketState.particles.push({ x: cx + (Math.random() - 0.5) * 16, y: rocketY + 55, vx: (Math.random() - 0.5) * 4, vy: Math.random() * 7 + 3, life: 1 });
     }
-    rocketState.particles = rocketState.particles.filter(p => p.life > 0);
-    rocketState.particles.forEach(p => {
-      ctx.fillStyle = `rgba(251,191,36,${p.life})`;
-      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
-      p.x += p.vx; p.y += p.vy; p.life -= 0.05;
-    });
   }
+  
+  rocketState.particles = rocketState.particles.filter(p => p.life > 0);
+  rocketState.particles.forEach(p => {
+    ctx.fillStyle = `rgba(251,191,36,${p.life})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+    p.x += p.vx; p.y += p.vy; p.life -= 0.05;
+  });
 
   // Action-Reaction Labels & Vectors
   if (F > 0) {
-    drawLabel(`AKSI: Gas → Roket F=${F}N`, cx + 110, rocketY - 25, "rgba(16,185,129,0.9)", "#ffffff", 11);
-    drawLabel(`REAKSI: Roket → Gas ${F}N`, cx + 110, rocketY + 5, "rgba(239,68,68,0.9)", "#ffffff", 11);
+    drawLabel(`AKSI: F=${F_MN} MN`, cx + 110, rocketY - 25, "rgba(16,185,129,0.9)", "#ffffff", 11);
+    drawLabel(`REAKSI: Gas ${F_MN} MN`, cx + 110, rocketY + 5, "rgba(239,68,68,0.9)", "#ffffff", 11);
     if (netF > 0) { 
-      drawLabel(`a = (F−W)/m = ${a.toFixed(2)} m/s²`, cx + 120, rocketY + 35, "rgba(245,158,11,0.9)", "#ffffff", 11); 
+      drawLabel(`a = ${a.toFixed(2)} m/s²`, cx + 120, rocketY + 35, "rgba(245,158,11,0.9)", "#ffffff", 11); 
     } else { 
       drawLabel(`F < W, roket belum terbang!`, cx + 115, rocketY + 35, "rgba(239,68,68,0.9)", "#ffffff", 11); 
     }
   }
 
-  // Force W arrow down
-  drawArrow(cx, rocketY - 20, 0, W * 0.06 + 20, "#ef4444", `W=${W}N`);
-  // Force F arrow up
-  if (F > 0) drawArrow(cx, rocketY - 20, 0, -(F * 0.04 + 20), "#10b981", `F=${F}N`);
+  // Force W arrow down (shifted left)
+  drawArrow(cx - 50, rocketY - 20, 0, Math.min(100, W / 1000000 * 2 + 30), "#ef4444", `W=${(W/1000000).toFixed(1)} MN`);
+  // Force F arrow up (shifted left)
+  if (F > 0) drawArrow(cx - 50, rocketY - 20, 0, -Math.min(120, F / 1000000 * 2 + 30), "#10b981", `F=${F_MN} MN`);
 
   ctx.restore();
 
-  velValue.textContent = rocketState.v.toFixed(2);
+  velValue.textContent = rocketState.v.toFixed(0);
   accelValue.textContent = Math.max(0, a).toFixed(2);
-  netForceValue.textContent = netF.toFixed(0);
+  netForceValue.textContent = (netF/1000000).toFixed(1) + " MN";
   timeValue.textContent = elapsedTime.toFixed(2);
 
   if (F <= W) {
-    statusMessage.textContent = `Roket Diam — F (${F}N) ≤ W (${W}N), butuh lebih dari 980 N!`;
+    statusMessage.textContent = `Roket Diam — F (${F_MN} MN) ≤ W (${(W/1000000).toFixed(1)} MN), butuh lebih besar dari berat!`;
     statusMessage.style.borderColor = "#ef4444";
-    conclusionText.textContent = `Roket diam karena gaya dorong F = ${F} N ≤ berat W = m·g = 100×9.8 = 980 N. Gaya reaksi gas belum cukup kuat meluncurkan roket.`;
+    conclusionText.textContent = `Roket diam karena gaya dorong F = ${F_MN} MN ≤ berat W = ${mTon} × 9.8 = ${(W/1000000).toFixed(1)} MN. Gaya reaksi gas belum cukup kuat meluncurkan roket bermassa ${mTon} Ton.`;
   } else if (rocketState.reachedTarget) {
-    statusMessage.textContent = `Mendarat di Bulan! (Target 500m Selesai)`;
+    statusMessage.textContent = `Mendarat di Bulan! (Jarak 384.400 km Selesai)`;
     statusMessage.style.borderColor = "#10b981";
-    conclusionText.textContent = `Misi Berhasil! Roket meluncur dengan gaya aksi-reaksi F = ${F} N dan berhasil mendarat di permukaan Bulan pada ketinggian 500m!`;
+    conclusionText.textContent = `Misi Berhasil! Roket meluncur dengan gaya aksi-reaksi dan mendarat di Bulan menempuh jarak 384.400 km! (Simulasi dipercepat untuk kenyamanan).`;
   } else {
-    statusMessage.textContent = `Roket Meluncur ke Bulan! — Ketinggian: ${rocketState.y.toFixed(0)}m / 500m (a = ${a.toFixed(2)} m/s²)`;
+    const distKm = (rocketState.y / 1000).toFixed(0);
+    statusMessage.textContent = `Roket Meluncur ke Bulan! — Jarak: ${distKm} km / 384.400 km (a = ${a.toFixed(2)} m/s²)`;
     statusMessage.style.borderColor = "#10b981";
-    conclusionText.textContent = `Hukum III Newton: Roket mendorong gas ke bawah (aksi) → gas mendorong roket ke atas (reaksi) dengan F = ${F} N. ΣF = F − W = ${netF.toFixed(0)} N. a = ${a.toFixed(2)} m/s². Roket meluncur menuju Bulan!`;
+    conclusionText.textContent = `Hukum III Newton: Roket mendorong gas ke bawah (aksi) → gas mendorong roket ke atas (reaksi) dengan F = ${F_MN} MN. ΣF = F − W = ${(netF/1000000).toFixed(1)} MN. a = ${a.toFixed(2)} m/s².`;
   }
 }
 
@@ -790,12 +817,13 @@ function updatePhysics(dt) {
     const m = Math.max(1, parseFloat(trolleyMass.value) || 50);
     const F = Math.max(0, parseFloat(trolleyForce.value) || 200);
     const f = Math.max(0, parseFloat(trolleyFriction.value) || 20);
-    const netF = Math.max(0, F - f);
+    let netF = F - f;
+    if (trolleyState.v <= 0 && F <= f) netF = 0;
     const a = netF / m;
-    trolleyState.v += a * scaledDt;
+    trolleyState.v = Math.max(0, trolleyState.v + a * scaledDt);
     trolleyState.x += trolleyState.v * scaledDt * 40;
     if (trolleyState.x > canvas.width * 0.5) { trolleyState.x = canvas.width * 0.5; isPlaying = false; btnPlayPause.textContent = "Mulai Simulasi"; }
-    pushChart(elapsedTime, trolleyState.v, a);
+    pushChart(elapsedTime, trolleyState.v, Math.max(0, a));
   } else if (currentScenario === "race") {
     const F = Math.max(1, parseFloat(raceForce.value) || 10000);
     const mC = Math.max(500, parseFloat(carMass.value) || 1000);
@@ -833,29 +861,49 @@ function updatePhysics(dt) {
     }
     pushChart(elapsedTime, raceState.vCar, raceState.vTruck);
   } else if (currentScenario === "rocket") {
-    const F = Math.max(0, parseFloat(rocketThrust.value) || 2000);
-    const m = 100, g = 9.8;
+    const mTon = parseFloat(rocketMass.value) || 5000;
+    const m = mTon * 1000;
+    const F_MN = parseFloat(rocketThrust.value) || 70;
+    const F = F_MN * 1000000;
+    const g = 9.8;
     const netF = F - m * g;
-    const a = netF / m; // Can be negative (thrust < weight = rocket stays)
+    const a = netF / m; 
+    
+    // Adaptive time warp so any thrust F > W reaches Moon in ~8s without getting stuck visually
+    const targetAltitude = 384400000; // 384,400 km
+    let timeWarp = 1500;
+    if (a > 0) {
+      const realEstTime = Math.sqrt((2 * targetAltitude) / a);
+      timeWarp = Math.min(100000, Math.max(1500, realEstTime / 8));
+    }
+    const scaledDtRocket = scaledDt * timeWarp;
+
     if (F > m * g) {
-      // Only accelerate upward when thrust exceeds weight
-      rocketState.v += a * scaledDt;
+      rocketState.v += a * scaledDtRocket;
       if (rocketState.v < 0) rocketState.v = 0;
     } else {
-      // Thrust insufficient: decelerate and stop
-      rocketState.v = Math.max(0, rocketState.v - 9.8 * scaledDt);
+      rocketState.v += a * scaledDtRocket;
     }
-    // y in metres (real physics scale)
-    rocketState.y += rocketState.v * scaledDt;
+    
+    rocketState.y += rocketState.v * scaledDtRocket;
+    if (rocketState.y <= 0) {
+      rocketState.y = 0;
+      rocketState.v = 0;
+    }
 
-    // Check target orbit reached (500m)
-    if (rocketState.y >= 500 && !rocketState.reachedTarget) {
+    if (rocketState.y >= targetAltitude && !rocketState.reachedTarget) {
       rocketState.reachedTarget = true;
+      rocketState.y = targetAltitude;
+      rocketState.v = 0;
     }
-    if (rocketState.y > 600) {
+    
+    // Stop simulation slightly after hitting moon
+    if (rocketState.y >= targetAltitude + 5000000) {
       isPlaying = false;
       btnPlayPause.textContent = "Mulai Simulasi";
     }
+    
+    // Chart shows real elapsed time, but we plot the current V and A
     pushChart(elapsedTime, rocketState.v, Math.max(0, a));
   } else if (currentScenario === "braking") {
     const v0 = Math.max(1, parseFloat(carSpeed.value) || 20);
@@ -1004,7 +1052,7 @@ btnBrake?.addEventListener("click", () => {
   });
 });
 
-[trolleyMass, trolleyForce, trolleyFriction, raceForce, carMass, truckMass, rocketThrust, carSpeed, brakingMass, brakingForce].forEach(el => {
+[trolleyMass, trolleyForce, trolleyFriction, raceForce, carMass, truckMass, rocketMass, rocketThrust, carSpeed, brakingMass, brakingForce].forEach(el => {
   if (el) el.addEventListener("input", () => { if (!isPlaying) drawScene(); });
 });
 
