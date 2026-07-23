@@ -29,6 +29,7 @@ const btnSpeed025 = document.getElementById("btnSpeed025");
 const velValue = document.getElementById("velValue");
 const accelValue = document.getElementById("accelValue");
 const netForceValue = document.getElementById("netForceValue");
+const statUnit3 = document.getElementById("statUnit3");
 const timeValue = document.getElementById("timeValue");
 const statusMessage = document.getElementById("statusMessage");
 const conclusionText = document.getElementById("conclusionText");
@@ -648,22 +649,26 @@ function drawRocketScene() {
 
   velValue.textContent = rocketState.v.toFixed(0);
   accelValue.textContent = Math.max(0, a).toFixed(2);
-  netForceValue.textContent = (netF/1000000).toFixed(1) + " MN";
+  netForceValue.textContent = (netF / 1000000).toFixed(1);
+  if (statUnit3) statUnit3.textContent = "MN";
   timeValue.textContent = elapsedTime.toFixed(2);
 
+  const W_MN = W / 1000000;
+  const netF_MN = netF / 1000000;
+
   if (F <= W) {
-    statusMessage.textContent = `Roket Diam — F (${F_MN} MN) ≤ W (${(W/1000000).toFixed(1)} MN), butuh lebih besar dari berat!`;
+    statusMessage.textContent = `Roket Diam — F (${F_MN} MN) ≤ W (${W_MN.toFixed(1)} MN), butuh F > W!`;
     statusMessage.style.borderColor = "#ef4444";
-    conclusionText.textContent = `Roket diam karena gaya dorong F = ${F_MN} MN ≤ berat W = ${mTon} × 9.8 = ${(W/1000000).toFixed(1)} MN. Gaya reaksi gas belum cukup kuat meluncurkan roket bermassa ${mTon} Ton.`;
+    conclusionText.textContent = `Roket diam karena Gaya Dorong F = ${F_MN} MN ≤ Gaya Berat W = m · g = ${mTon} Ton × 9,8 m/s² = ${W_MN.toFixed(1)} MN. Sesuai Hukum III Newton, dorongan gas belum cukup meluncurkan roket.`;
   } else if (rocketState.reachedTarget) {
     statusMessage.textContent = `Mendarat di Bulan! (Jarak 384.400 km Selesai)`;
     statusMessage.style.borderColor = "#10b981";
-    conclusionText.textContent = `Misi Berhasil! Roket meluncur dengan gaya aksi-reaksi dan mendarat di Bulan menempuh jarak 384.400 km! (Simulasi dipercepat untuk kenyamanan).`;
+    conclusionText.textContent = `Misi Berhasil! ΣF = F − W = ${F_MN} MN − ${W_MN.toFixed(1)} MN = ${netF_MN.toFixed(1)} MN. Maka percepatan a = ΣF / m = ${netF_MN.toFixed(1)} MN / ${mTon} Ton = ${a.toFixed(2)} m/s². Roket berhasil mendarat di Bulan!`;
   } else {
     const distKm = (rocketState.y / 1000).toFixed(0);
-    statusMessage.textContent = `Roket Meluncur ke Bulan! — Jarak: ${distKm} km / 384.400 km (a = ${a.toFixed(2)} m/s²)`;
+    statusMessage.textContent = `Roket Meluncur! — Jarak: ${distKm} km / 384.400 km (a = ${a.toFixed(2)} m/s²)`;
     statusMessage.style.borderColor = "#10b981";
-    conclusionText.textContent = `Hukum III Newton: Roket mendorong gas ke bawah (aksi) → gas mendorong roket ke atas (reaksi) dengan F = ${F_MN} MN. ΣF = F − W = ${(netF/1000000).toFixed(1)} MN. a = ${a.toFixed(2)} m/s².`;
+    conclusionText.textContent = `Hukum III & II Newton: Gaya Dorong F = ${F_MN} MN dikurangi Berat W = ${W_MN.toFixed(1)} MN → Resultan ΣF = ${netF_MN.toFixed(1)} MN. Maka percepatan a = ΣF / m = ${netF_MN.toFixed(1)} MN / ${mTon} Ton = ${a.toFixed(2)} m/s².`;
   }
 }
 
@@ -990,6 +995,7 @@ function resetSim(rebuildChart = true) {
 function switchScenario() {
   currentScenario = scenarioSelect.value;
   [trolleyControls, raceControls, rocketControls, brakingControls].forEach(el => el.style.display = "none");
+  if (statUnit3) statUnit3.textContent = currentScenario === "rocket" ? "MN" : "N";
   if (currentScenario === "trolley") {
     trolleyControls.style.display = "block";
     chartLabel.textContent = "Grafik Kecepatan v & Percepatan a vs Waktu";
